@@ -1,76 +1,328 @@
 :root {
   font:
-    16px/1.6 system-ui,
+    15px/1.5 system-ui,
     sans-serif;
-  color: #e6eee7;
-  background: #171d19;
+  color: #e3ede3;
+  background: #101813;
+  color-scheme: dark;
   -webkit-text-size-adjust: 100%;
   overscroll-behavior: none;
-}
-
-body {
-  margin: 0;
-  min-height: 100svh;
-  display: grid;
-  place-items: center;
-}
-
-main {
-  max-width: 32rem;
-  padding: 2rem;
-}
-
-h1 {
-  margin: 0;
-  font-size: clamp(2rem, 8vw, 3rem);
-  letter-spacing: -0.05em;
-}
-
-.eyebrow {
-  color: #a5ecae;
-  font-size: 0.75rem;
-  letter-spacing: 0.15em;
-}
-
-#status {
-  margin-top: 2rem;
-  padding: 1rem;
-  border: 1px solid #46594a;
-  border-radius: 0.5rem;
-}
-
-.note {
-  color: #b4c2b7;
-  font-size: 0.875rem;
+  --muted: #abbcad;
+  --accent: #b0deb5;
+  --border: #3e5143;
 }
 
 * {
   box-sizing: border-box;
 }
+body {
+  margin: 0;
+  min-width: 280px;
+}
 main {
   width: 100%;
+  max-width: 30rem;
+  margin: 0 auto;
+  padding: 24px 20px max(24px, env(safe-area-inset-bottom));
 }
-section,
-details {
-  margin-top: 1.5rem;
+h1,
+h2,
+p {
+  margin: 0;
 }
-label {
-  display: block;
-}
+button,
 input {
-  width: 100%;
-  padding: 0.75rem;
   font: inherit;
 }
 button {
-  min-height: 44px;
-  padding: 0.5rem 0.75rem;
-  margin-top: 0.5rem;
-  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
-.note {
+button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+button:focus-visible,
+input:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.app-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.app-icon {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  image-rendering: pixelated;
+}
+h1 {
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: -0.6px;
+  line-height: 1.3;
+}
+.app-heading p {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.radio-card {
+  padding: 22px;
+  background: #1c2a20;
+  border-radius: 24px;
+}
+.card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.eyebrow {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.badge {
+  padding: 5px 10px;
+  border-radius: 20px;
+  background: #334037;
+  color: #d2dbd2;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+[data-state='connected'] .badge {
+  background: #284e36;
+  color: #b8e5bd;
+}
+[data-state='connecting'] .badge {
+  background: #35483a;
+  color: #c7dfc9;
+}
+[data-state='error'] .badge {
+  background: #503b30;
+  color: #f0c8a7;
+}
+.radio-card h2 {
+  margin-top: 24px;
+  font-size: clamp(25px, 7vw, 32px);
+  font-weight: 600;
+  letter-spacing: -1px;
+  line-height: 1.15;
   overflow-wrap: anywhere;
 }
+.radio-detail {
+  color: var(--muted);
+  margin-top: 10px;
+  font-size: 13px;
+}
+.metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 24px 0 0;
+  padding-top: 19px;
+  border-top: 1px solid #344538;
+}
+dt {
+  min-height: 33px;
+  color: var(--muted);
+  font-size: 11px;
+}
+dt span {
+  display: block;
+  color: #99ad9d;
+}
+dd {
+  margin: 6px 0 0;
+  font-size: 27px;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.6px;
+}
+.display-state {
+  font-size: 18px;
+  letter-spacing: -0.3px;
+  padding-top: 3px;
+}
+
+.helper-card {
+  margin-top: 14px;
+  padding: 20px;
+  border-radius: 22px;
+  background: #19251d;
+}
+.helper-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.helper-heading svg {
+  width: 20px;
+  height: 20px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.helper-heading h2 {
+  font-size: 16px;
+  font-weight: 550;
+  letter-spacing: -0.3px;
+}
+.helper-indicator {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--accent);
+}
+.note {
+  color: var(--muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.note:empty {
+  display: none;
+}
+#helper-form .note,
+#helper-summary {
+  margin-top: 10px;
+}
+label {
+  display: block;
+  margin: 19px 0 7px;
+  font-size: 12px;
+  color: #cad8cc;
+}
+input {
+  width: 100%;
+  height: 48px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: #e3ede3;
+  background: #111c15;
+  font-size: 16px;
+}
+input::placeholder {
+  color: #8ca290;
+  font-size: 13px;
+}
+.primary-button,
+.secondary-button {
+  min-height: 44px;
+  border-radius: 24px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.primary-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 12px;
+  background: var(--accent);
+  color: #12351e;
+  border: 1px solid transparent;
+}
+.primary-button span {
+  font-size: 19px;
+  line-height: 1;
+}
+.secondary-button {
+  color: #d1e3d2;
+  background: transparent;
+  border: 1px solid var(--border);
+}
+#reconnect {
+  margin-top: 14px;
+  width: 100%;
+}
+
+.connection-details {
+  margin-top: 14px;
+  border: 1px solid #304236;
+  border-radius: 18px;
+}
+summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  min-height: 56px;
+  list-style: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 18px;
+  color: #ccd9cd;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+.chevron {
+  width: 7px;
+  height: 7px;
+  margin: -4px 3px 0 12px;
+  border: solid var(--muted);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+details[open] .chevron {
+  transform: rotate(225deg);
+  margin-top: 4px;
+}
+.details-body {
+  display: grid;
+  gap: 14px;
+  padding: 0 20px 18px;
+}
+.details-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+.text-button {
+  min-height: 44px;
+  padding: 8px 0;
+  color: var(--accent);
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+}
+.version {
+  font-size: 10px;
+  color: #8fa593;
+}
+.footer-note {
+  margin: 18px 8px 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #98ac9c;
+  text-align: center;
+}
+
+@media (max-width: 340px) {
+  main {
+    padding: 18px 14px 24px;
+  }
+  .radio-card,
+  .helper-card {
+    padding: 18px;
+  }
+  .metrics {
+    gap: 10px;
+  }
+}
+
 [hidden] {
   display: none !important;
 }

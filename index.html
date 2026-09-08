@@ -3,35 +3,67 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#171d19" />
+    <meta name="theme-color" content="#101813" />
+    <link id="app-favicon" rel="icon" type="image/png" />
     <title>MeshCore G2</title>
   </head>
   <body>
     <main>
-      <h1>MeshCore G2</h1>
-      <p>Connect your MeshCore companion through the Android phone helper.</p>
+      <header class="app-heading">
+        <img id="app-icon" class="app-icon" width="44" height="44" alt="" />
+        <div>
+          <h1>MeshCore G2</h1>
+          <p>Your mesh, at a glance.</p>
+        </div>
+      </header>
+
       <section
         class="radio-card"
         aria-labelledby="radio-name"
         data-state="demo"
       >
+        <div class="card-heading">
+          <span class="eyebrow">Your radio</span>
+          <span id="connection-badge" class="badge">Demo</span>
+        </div>
         <h2 id="radio-name">Connect your radio</h2>
-        <p id="connection-badge">Demo</p>
-        <p id="status" role="status">Link your phone helper to get started.</p>
-        <dl>
-          <dt>Battery voltage at connection</dt>
-          <dd id="battery">—</dd>
-          <dt>Glasses display</dt>
-          <dd id="glasses-state">Waiting</dd>
+        <p id="status" class="radio-detail" role="status">
+          Link your phone helper to see your radio here.
+        </p>
+        <dl class="metrics">
+          <div>
+            <dt>Battery <span>· at connection</span></dt>
+            <dd id="battery">—</dd>
+          </div>
+          <div>
+            <dt>Glasses display</dt>
+            <dd id="glasses-state" class="display-state">Waiting</dd>
+          </div>
         </dl>
       </section>
-      <section aria-labelledby="helper-heading">
-        <h2 id="helper-heading">Phone helper</h2>
-        <span id="helper-indicator" hidden>Linked</span>
+
+      <section class="helper-card" aria-labelledby="helper-heading">
+        <div class="helper-heading">
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+          >
+            <rect x="6" y="2" width="12" height="20" rx="3" />
+            <path d="M10 18h4" />
+          </svg>
+          <h2 id="helper-heading">Phone helper</h2>
+          <span id="helper-indicator" class="helper-indicator" hidden
+            >Linked</span
+          >
+        </div>
         <form id="helper-form">
           <p class="note">
             Connect your radio in MeshCore G2 Helper, then copy its connection
-            key here once.
+            key here. You only need to do this once.
           </p>
           <label for="helper-key">Connection key</label>
           <input
@@ -44,29 +76,48 @@
             maxlength="64"
             placeholder="Paste from the helper"
           />
-          <button type="submit">Link phone helper</button>
+          <button class="primary-button" type="submit">
+            Link phone helper <span aria-hidden="true">↗</span>
+          </button>
         </form>
         <div id="linked-actions" hidden>
           <p id="helper-summary" class="note">Connecting on this phone…</p>
-          <button id="reconnect" type="button">Reconnect</button>
+          <button id="reconnect" class="secondary-button" type="button">
+            Reconnect
+          </button>
         </div>
       </section>
-      <details class="connection-details" open>
-        <summary>Connection details</summary>
-        <p id="link-status" class="note" role="status">
-          Your helper link will be saved on this phone.
-        </p>
-        <p id="hud-status" class="note" role="status">
-          Open in the Even App to display the HUD.
-        </p>
-        <p id="radio-diagnostics" class="note"></p>
-        <button id="check-connection" type="button">Check connection</button>
-        <p id="connection-check" class="note" role="status"></p>
-        <button id="demo" type="button">Use demo</button>
-        <button id="forget-helper" type="button" hidden>Forget helper</button>
-        <p id="app-version" class="note"></p>
+
+      <details class="connection-details">
+        <summary>
+          Connection details <span class="chevron" aria-hidden="true"></span>
+        </summary>
+        <div class="details-body">
+          <p id="link-status" class="note" role="status">
+            Your helper link will be saved on this phone.
+          </p>
+          <p id="hud-status" class="note" role="status">
+            Open in the Even App to display the HUD.
+          </p>
+          <p id="radio-diagnostics" class="note"></p>
+          <button id="check-connection" class="secondary-button" type="button">
+            Check connection
+          </button>
+          <p id="connection-check" class="note" role="status"></p>
+          <div class="details-actions">
+            <button id="demo" class="text-button" type="button">
+              Use demo
+            </button>
+            <button id="forget-helper" class="text-button" type="button" hidden>
+              Forget helper
+            </button>
+          </div>
+          <p id="app-version" class="version"></p>
+        </div>
       </details>
-      <p class="note">Keep the helper running while using your glasses.</p>
+      <p class="footer-note">
+        Keep the helper running while using your glasses.
+      </p>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
