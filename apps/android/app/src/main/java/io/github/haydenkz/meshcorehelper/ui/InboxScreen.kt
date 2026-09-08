@@ -137,3 +137,14 @@ private fun deliveryLabel(state: String) = when (state) {
     "unconfirmed" -> "No confirmation"
     else -> state
 }
+
+@Composable
+internal fun AdvertRow(advert: RecentAdvert) {
+    OutlinedCard(shape = RoundedCornerShape(20.dp)) {
+        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(advert.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+            Text("${advert.nodeType} · ${chatTime(advert.receivedAt, includeDate = true)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(advert.publicKeyPrefix, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}

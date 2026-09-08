@@ -1,6 +1,11 @@
 import type { MeshCoreSnapshot, MeshCoreSource } from './source.ts'
 import { normalizeHelperKey } from './helper-link.ts'
-import { parseChats, parseMessages, type InboxSource } from './inbox.ts'
+import {
+  parseAdverts,
+  parseChats,
+  parseMessages,
+  type InboxSource,
+} from './inbox.ts'
 
 export const PHONE_HELPER_URL = 'http://127.0.0.1:8765/v1/status'
 const connectingStates = [
@@ -118,6 +123,13 @@ export class PhoneHelperSource implements MeshCoreSource, InboxSource {
     const query = before === undefined ? '' : `?before=${before}`
     return parseChats(
       await this.readJson(`http://127.0.0.1:8765/v1/chats${query}`, signal),
+    )
+  }
+
+  async readAdverts(before?: number, signal?: AbortSignal) {
+    const query = before === undefined ? '' : `?before=${before}`
+    return parseAdverts(
+      await this.readJson(`http://127.0.0.1:8765/v1/adverts${query}`, signal),
     )
   }
 

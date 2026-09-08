@@ -32,9 +32,11 @@ companion BLE firmware.
 
 Keep the helper running while using the glasses.
 
-On the glasses, tap then hold to switch between **Channels** and **Direct messages**.
-Swipe between message cards, tap to open, and double-tap to go back. TX/RX show the radio's
-sent and received packet totals; unavailable counts appear as dashes.
+On the glasses, tap then hold to switch between **Channels**, **Direct messages**,
+and **Recent adverts**. Swipe between cards, tap to open messages, and double-tap
+to go back. Recent adverts also appear in Android under **Logs → Recent adverts**.
+TX/RX show the radio's sent and received packet totals; unavailable counts appear
+as dashes.
 
 ## Development
 

@@ -18,6 +18,7 @@ public final class BleCompanion {
         default void channel(int index, String name) {}
         default void contact(String prefix, String name) {}
         default void contactInfo(ContactInfo info) { contact(info.prefix(), info.name()); }
+        default void advert(ContactInfo info) {}
         default void outgoing(long id, String state, Long ack, long timeoutMs) {}
         default void confirmed(long ack) {}
         default void packets(Long sent, Long received) {}
@@ -168,6 +169,7 @@ public final class BleCompanion {
                                 @Override public void channel(int index, String name) { listener.channel(index, name); }
                                 @Override public void contact(String prefix, String name) { listener.contact(prefix, name); }
                                 @Override public void contactInfo(ContactInfo info) { listener.contactInfo(info); }
+                                @Override public void advert(ContactInfo info) { listener.advert(info); }
                                 @Override public void outgoing(long id, String state, Long ack, long timeoutMs) { listener.outgoing(id, state, ack, timeoutMs); }
                                 @Override public void confirmed(long ack) { listener.confirmed(ack); }
                                 @Override public void packets(Long sent, Long received) { listener.packets(sent, received); }

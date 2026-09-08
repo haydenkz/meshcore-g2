@@ -61,4 +61,69 @@ public class MessageStoreTest {
         assertTrue(store.messages("direct", radio + ":112233445566", Long.MAX_VALUE).contains("delivered"));
         assertEquals(id, new JSONObject(store.chats(Long.MAX_VALUE)).getJSONArray("items").getJSONObject(0).getLong("lastMessageId"));
     }
+    @Test public void allAdvertsUseTimestampOrderAndTheSamePaginationForBothApps() throws Exception {
+        open();
+        String key = "12".repeat(32);
+        store.contact(radio, new ContactInfo(key, "Hill repeater", 2));
+        store.advert(radio, new ContactInfo(key, "", 0), 1000);
+        assertEquals("Hill repeater", new JSONObject(store.adverts(Long.MAX_VALUE)).getJSONArray("items").getJSONObject(0).getString("name"));
+        // Repeated and out-of-order timestamps must not lose nodes at page boundaries.
+        for (int i = 0; i < 205; i++) store.advert(radio, new ContactInfo(String.format(java.util.Locale.ROOT, "%064x", i), "Node " + i, 1), 2000 + i % 7);
+        store.advert(radio, new ContactInfo(key, "", 0), 5000);
+        JSONObject first = new JSONObject(store.adverts(Long.MAX_VALUE));
+        JSONArray nativeItems = new JSONObject(store.allAdverts()).getJSONArray("items");
+        assertEquals(206, nativeItems.length()); assertTrue(first.getBoolean("hasMore"));
+        assertEquals("Hill repeater", nativeItems.getJSONObject(0).getString("name"));
+        for (int i = 0; i < 16; i++) assertEquals(nativeItems.getJSONObject(i).toString(), first.getJSONArray("items").getJSONObject(i).toString());
+        long before = first.getJSONArray("items").getJSONObject(15).getLong("id");
+        assertEquals(nativeItems.getJSONObject(16).getLong("id"), new JSONObject(store.adverts(before)).getJSONArray("items").getJSONObject(0).getLong("id"));
+        int seen = 0;
+        JSONObject page = first;
+        long previousTime = Long.MAX_VALUE;
+        while (true) {
+            JSONArray items = page.getJSONArray("items");
+            for (int i = 0; i < items.length(); i++) {
+                JSONObject item = items.getJSONObject(i);
+                assertEquals(nativeItems.getJSONObject(seen++).getLong("id"), item.getLong("id"));
+                assertTrue(item.getLong("receivedAt") <= previousTime);
+                previousTime = item.getLong("receivedAt");
+            }
+            if (!page.getBoolean("hasMore")) break;
+            page = new JSONObject(store.adverts(items.getJSONObject(items.length() - 1).getLong("id")));
+        }
+        assertEquals(206, seen);
+        store.close(); open();
+        assertEquals(206, new JSONObject(store.allAdverts()).getJSONArray("items").length());
+    }
+    @Test public void savedCompanionAdvertsAppearWithoutWaitingForANewPushOrAnAgeCutoff() throws Exception {
+        open();
+        String key = "12".repeat(32);
+        store.contact(radio, new ContactInfo(key, "Old repeater", 2, 1000));
+        store.contact(radio, new ContactInfo("34".repeat(32), "Never advertised", 1));
+        JSONObject saved = new JSONObject(store.allAdverts()).getJSONArray("items").getJSONObject(0);
+        assertEquals(1, new JSONObject(store.allAdverts()).getJSONArray("items").length());
+        assertEquals(1000, saved.getLong("receivedAt"));
+        long id = saved.getLong("id");
+        store.advert(radio, new ContactInfo(key, "", 0), 5000);
+        store.contact(radio, new ContactInfo(key, "Renamed repeater", 2, 2000));
+        JSONObject latest = new JSONObject(store.allAdverts()).getJSONArray("items").getJSONObject(0);
+        assertEquals(id, latest.getLong("id"));
+        assertEquals(5000, latest.getLong("receivedAt"));
+        assertEquals("Renamed repeater", latest.getString("name"));
+        store.close(); open();
+        assertEquals(1, new JSONObject(store.allAdverts()).getJSONArray("items").length());
+    }
+    @Test public void advertUpgradeSupportsChatOnlyAndEarlierPreviewDatabases() throws Exception {
+        open();
+        long messageId = store.outgoing(radio, "direct", "112233445566", "Keep my chat", 1000);
+        store.getWritableDatabase().execSQL("DROP TABLE adverts");
+        store.getWritableDatabase().setVersion(2);
+        store.close(); open();
+        assertEquals(0, new JSONObject(store.allAdverts()).getJSONArray("items").length());
+        assertEquals(messageId, new JSONObject(store.chats(Long.MAX_VALUE)).getJSONArray("items").getJSONObject(0).getLong("lastMessageId"));
+        store.contact(radio, new ContactInfo("12".repeat(32), "Keep my advert", 2, 2000));
+        store.getWritableDatabase().setVersion(2);
+        store.close(); open();
+        assertEquals("Keep my advert", new JSONObject(store.allAdverts()).getJSONArray("items").getJSONObject(0).getString("name"));
+    }
 }

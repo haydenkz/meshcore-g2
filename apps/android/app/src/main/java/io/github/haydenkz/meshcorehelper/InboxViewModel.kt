@@ -16,9 +16,11 @@ import org.json.JSONObject
 
 data class Conversation(val id: String, val kind: String, val name: String, val preview: String, val updatedAt: Long)
 data class ChatMessage(val id: Long, val sender: String, val text: String, val sentAt: Long, val outgoing: Boolean, val delivery: String)
+data class RecentAdvert(val id: Long, val name: String, val publicKeyPrefix: String, val nodeType: String, val receivedAt: Long)
 data class InboxUiState(
     val channels: List<Conversation> = emptyList(),
     val chats: List<Conversation> = emptyList(),
+    val adverts: List<RecentAdvert> = emptyList(),
     val conversation: Conversation? = null,
     val messages: List<ChatMessage> = emptyList(),
     val hasOlder: Boolean = false,
@@ -74,11 +76,14 @@ class InboxViewModel(application: Application) : AndroidViewModel(application) {
                 synchronized(store) {
                     val channels = conversations(store.conversations("channel"))
                     val chats = conversations(store.conversations("direct"))
+                    val adverts = JSONObject(store.allAdverts()).getJSONArray("items").objects().map {
+                        RecentAdvert(it.getLong("id"), it.getString("name"), it.getString("publicKeyPrefix"), it.getString("nodeType"), it.getLong("receivedAt"))
+                    }
                     val history = conversation?.let { JSONObject(store.messages(it.kind, it.id, Long.MAX_VALUE, limit)) }
                     val messages = history?.getJSONArray("items")?.objects()?.map {
                         ChatMessage(it.getLong("id"), it.getString("senderName"), it.getString("text"), it.getLong("sentAt"), it.getString("direction") == "out", it.getString("delivery"))
                     } ?: emptyList()
-                    InboxUiState(channels, chats, conversation?.let { active -> (channels + chats).find { it.id == active.id && it.kind == active.kind } ?: active }, messages, history?.getBoolean("hasMore") ?: false, false)
+                    InboxUiState(channels, chats, adverts, conversation?.let { active -> (channels + chats).find { it.id == active.id && it.kind == active.kind } ?: active }, messages, history?.getBoolean("hasMore") ?: false, false)
                 }
             }
             if (activeRevision == revision && visible) mutableState.value = next

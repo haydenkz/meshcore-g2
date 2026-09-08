@@ -15,22 +15,28 @@ import org.json.JSONObject;
 public final class MessageStore extends SQLiteOpenHelper implements StatusServer.Inbox {
     private static final int PAGE_SIZE = 16;
     public MessageStore(Context context) { this(context, "inbox.db"); }
-    MessageStore(Context context, String databaseName) { super(context, databaseName, null, 2); setWriteAheadLoggingEnabled(true); }
+    MessageStore(Context context, String databaseName) { super(context, databaseName, null, 3); setWriteAheadLoggingEnabled(true); }
     @Override public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, radio TEXT NOT NULL, kind TEXT NOT NULL, peer TEXT NOT NULL, sender TEXT NOT NULL, text TEXT NOT NULL, sent_at INTEGER NOT NULL, received_at INTEGER NOT NULL, UNIQUE(radio,kind,peer,sender,text,sent_at))");
         db.execSQL("CREATE INDEX inbox_page ON messages(kind,id DESC)");
         db.execSQL("CREATE INDEX chat_page ON messages(radio,kind,peer,id DESC)");
         db.execSQL("CREATE TABLE names (radio TEXT NOT NULL, kind TEXT NOT NULL, peer TEXT NOT NULL, name TEXT NOT NULL, PRIMARY KEY(radio,kind,peer))");
         upgradeHistory(db);
+        createAdverts(db);
     }
     @Override public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         if (oldVersion < 2) upgradeHistory(db);
+        if (oldVersion < 3) createAdverts(db);
     }
     private static void upgradeHistory(SQLiteDatabase db) {
         db.execSQL("ALTER TABLE messages ADD COLUMN direction TEXT NOT NULL DEFAULT 'in'");
         db.execSQL("ALTER TABLE messages ADD COLUMN delivery TEXT NOT NULL DEFAULT 'received'");
         db.execSQL("INSERT OR IGNORE INTO names(radio,kind,peer,name) SELECT radio,kind,peer,'' FROM messages GROUP BY radio,kind,peer");
         db.execSQL("CREATE TABLE nodes (radio TEXT NOT NULL, public_key TEXT NOT NULL, name TEXT NOT NULL, type INTEGER NOT NULL, PRIMARY KEY(radio,public_key))");
+    }
+    private static void createAdverts(SQLiteDatabase db) {
+        // Version 2 development builds may already contain this table.
+        db.execSQL("CREATE TABLE IF NOT EXISTS adverts (id INTEGER PRIMARY KEY AUTOINCREMENT, radio TEXT NOT NULL, public_key TEXT NOT NULL, received_at INTEGER NOT NULL, UNIQUE(radio,public_key))");
     }
     public void name(String radio, String kind, String peer, String name) {
         if (name.isBlank()) return;
@@ -58,6 +64,26 @@ public final class MessageStore extends SQLiteOpenHelper implements StatusServer
             values.put("radio", radio); values.put("public_key", info.publicKey()); values.put("name", info.name()); values.put("type", info.type());
             getWritableDatabase().insertWithOnConflict("nodes", null, values, SQLiteDatabase.CONFLICT_REPLACE);
         }
+        // GET_CONTACTS includes the last advert's timestamp, even when it was
+        // heard before the phone connected. A missing timestamp is not "now".
+        if (info.lastAdvertAt() > 0) saveAdvert(radio, info.publicKey(), info.lastAdvertAt());
+    }
+    public void advert(String radio, ContactInfo info, long receivedAt) {
+        if (radio == null) return;
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            contact(radio, info);
+            saveAdvert(radio, info.publicKey(), receivedAt);
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
+    }
+    private void saveAdvert(String radio, String publicKey, long timestamp) {
+        SQLiteDatabase db = getWritableDatabase();
+        // Stable IDs let older-page cursors survive a repeat advert. Keep every
+        // known node and don't replace a newer observation with an older sync row.
+        db.execSQL("INSERT OR IGNORE INTO adverts(radio,public_key,received_at) VALUES (?,?,?)", new Object[]{radio, publicKey, timestamp});
+        db.execSQL("UPDATE adverts SET received_at=? WHERE radio=? AND public_key=? AND received_at<?", new Object[]{timestamp, radio, publicKey, timestamp});
     }
     public long outgoing(String radio, String kind, String peer, String text, long sentAt) {
         ContentValues values = new ContentValues();
@@ -127,6 +153,27 @@ public final class MessageStore extends SQLiteOpenHelper implements StatusServer
                         .put("lastMessageId", rows.getLong(3)).put("preview", rows.isNull(4) ? "" : rows.getString(4)).put("updatedAt", rows.getLong(5)));
             }
             return items.toString();
+        } catch (JSONException error) { throw new IllegalStateException(error); }
+    }
+    public String adverts(long before) { return adverts(before, PAGE_SIZE); }
+    public String allAdverts() { return adverts(Long.MAX_VALUE, -1); }
+    public String adverts(long before, int limit) {
+        String where = "";
+        String[] args = null;
+        if (before != Long.MAX_VALUE) {
+            where = " WHERE (a.received_at<(SELECT received_at FROM adverts WHERE id=?) OR (a.received_at=(SELECT received_at FROM adverts WHERE id=?) AND a.id<?))";
+            args = new String[]{Long.toString(before), Long.toString(before), Long.toString(before)};
+        }
+        String query = "SELECT a.id,a.public_key,a.received_at,n.name,n.type FROM adverts a LEFT JOIN nodes n ON n.radio=a.radio AND n.public_key=a.public_key" + where + " ORDER BY a.received_at DESC,a.id DESC" + (limit < 0 ? "" : " LIMIT " + (limit + 1));
+        try (Cursor rows = getReadableDatabase().rawQuery(query, args)) {
+            JSONArray items = new JSONArray();
+            while ((limit < 0 || items.length() < limit) && rows.moveToNext()) {
+                String prefix = rows.getString(1).substring(0, 12);
+                items.put(new JSONObject().put("id", rows.getLong(0)).put("publicKeyPrefix", prefix)
+                        .put("name", rows.isNull(3) || rows.getString(3).isBlank() ? prefix : rows.getString(3))
+                        .put("nodeType", ContactInfo.typeName(rows.getInt(4))).put("receivedAt", rows.getLong(2)));
+            }
+            return new JSONObject().put("schema", 1).put("items", items).put("hasMore", rows.moveToNext()).toString();
         } catch (JSONException error) { throw new IllegalStateException(error); }
     }
     public String chats(long before) {

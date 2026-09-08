@@ -9,11 +9,13 @@ public class MessageSendTest {
     private final List<byte[]> writes = new ArrayList<>();
     private final List<String> states = new ArrayList<>();
     private final List<Long> acknowledgements = new ArrayList<>();
+    private final List<ContactInfo> adverts = new ArrayList<>();
     private final List<ReceivedMessage> received = new ArrayList<>();
     private final MessageSync sync = new MessageSync(writes::add, new MessageSync.Listener() {
         public void message(ReceivedMessage message) { received.add(message); }
         public void channel(int index, String name) {}
         public void contact(String prefix, String name) {}
+        public void advert(ContactInfo info) { adverts.add(info); }
         public void outgoing(long id, String state, Long ack, long timeoutMs) { states.add(id + ":" + state); }
         public void confirmed(long ack) { acknowledgements.add(ack); }
         public void idle() {}
@@ -54,7 +56,7 @@ public class MessageSendTest {
         sync.onFrame(new byte[]{(byte) 0x82, 9, 0, 0, 0});
         sync.onFrame(new byte[]{6, 0, 7}); // Incomplete send reply.
         sync.onWrite(true);
-        assertEquals(List.of("1:sending"), states);
+        assertEquals(1, adverts.size()); assertEquals(List.of("1:sending"), states);
         assertEquals(3, writes.size());
         sync.onFrame(new byte[]{6, 0, 7, 0, 0, 0, 100, 0, 0, 0});
         assertEquals(List.of("1:sending", "1:awaiting_ack"), states);

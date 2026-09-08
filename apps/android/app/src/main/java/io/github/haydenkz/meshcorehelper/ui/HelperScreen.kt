@@ -88,6 +88,7 @@ fun HelperScreen(
     val homeList = rememberLazyListState()
     val logsList = rememberLazyListState()
     val chatStates = rememberSaveableStateHolder()
+    var showAdverts by rememberSaveable { mutableStateOf(false) }
     val conversation = inbox.conversation?.takeIf { destination == if (it.kind == "channel") "Channels" else "DMs" }
     BackHandler(enabled = conversation != null || destination != "Home") {
         if (conversation != null) onCloseConversation() else destination = "Home"
@@ -142,13 +143,25 @@ fun HelperScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item {
-                    Text("Radio logs", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Medium)
-                    Text("Live packets received by your radio.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Radio logs", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Medium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(selected = !showAdverts, onClick = { showAdverts = false }, label = { Text("Packets") })
+                            FilterChip(selected = showAdverts, onClick = { showAdverts = true }, label = { Text("Recent adverts") })
+                        }
+                        Text(if (showAdverts) "All saved adverts, newest first." else "Live packets received by your radio.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
-                if (state.logs.isEmpty()) item {
-                    Text(if (connected) "Waiting for radio packets…" else "Connect a radio to see its logs.", Modifier.padding(vertical = 24.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (showAdverts) {
+                    inbox.error?.let { error -> item { Text(error, color = MaterialTheme.colorScheme.error) } }
+                    if (inbox.adverts.isEmpty()) item { Text("No adverts received yet.", Modifier.padding(vertical = 24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    items(inbox.adverts, key = { "advert:${it.id}" }) { AdvertRow(it) }
+                } else {
+                    if (state.logs.isEmpty()) item {
+                        Text(if (connected) "Waiting for radio packets…" else "Connect a radio to see its logs.", Modifier.padding(vertical = 24.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    items(state.logs, key = { it.id() }) { RadioLogRow(it) }
                 }
-                items(state.logs, key = { it.id() }) { RadioLogRow(it) }
             }
             return@Scaffold
         }
