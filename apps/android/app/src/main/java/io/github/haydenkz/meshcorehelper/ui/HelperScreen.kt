@@ -70,7 +70,6 @@ fun HelperScreen(
     onConnect: (NearbyRadio) -> Unit,
     onDisconnect: () -> Unit,
     onCopyKey: () -> Unit,
-    onStopHelper: () -> Unit,
     onDismissNotice: () -> Unit,
 ) {
     val connected = state.radio.state() == "connected"
@@ -148,11 +147,6 @@ fun HelperScreen(
                         Text(state.radio.name().ifBlank { "Find your companion" }, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Medium)
                         if (!connected) Text(state.radio.detail(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (connecting) LinearProgressIndicator(Modifier.fillMaxWidth())
-                        if (connected) {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-                                Metric("Battery · at connection", state.radio.batteryMillivolts()?.let { "${it / 1000.0} V" } ?: "—")
-                            }
-                        }
                         if (connected || connecting) {
                             OutlinedButton(onClick = onDisconnect, modifier = Modifier.fillMaxWidth()) { Text(if (connecting) "Cancel connection" else "Disconnect radio") }
                         } else {
@@ -199,21 +193,7 @@ fun HelperScreen(
                     }
                 }
             }
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Your radio stays connected in the background.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    TextButton(onClick = onStopHelper, enabled = state.running) { Text("Stop MeshCore G2") }
-                }
-            }
         }
-    }
-}
-
-@Composable
-private fun Metric(label: String, value: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.titleLarge)
     }
 }
 
@@ -221,7 +201,7 @@ private fun Metric(label: String, value: String) {
 @Composable
 private fun ConnectedPreview() {
     MeshCoreTheme {
-        HelperScreen(HelperUiState(radio = HelperSnapshot("connected", "BLE companion connected.", "Trail companion", 8, 3840), running = true, hudLinked = true), {}, {}, {}, {}, {}, {}, {})
+        HelperScreen(HelperUiState(radio = HelperSnapshot("connected", "BLE companion connected.", "Trail companion", 8, 3840), running = true, hudLinked = true), {}, {}, {}, {}, {}, {})
     }
 }
 
