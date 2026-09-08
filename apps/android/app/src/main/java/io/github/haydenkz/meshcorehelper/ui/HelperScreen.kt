@@ -85,10 +85,11 @@ fun HelperScreen(
     onOlderMessages: () -> Unit = {},
     onSendMessage: (Conversation, String) -> String? = { _, _ -> "Connect a radio to send messages." },
 ) {
-    var destination by rememberSaveable { mutableStateOf("Home") }
-    val homeList = rememberLazyListState()
+    var destination by rememberSaveable { mutableStateOf("Contacts") }
+    val profileList = rememberLazyListState()
     val chatStates = rememberSaveableStateHolder()
-    val tabs = listOf("Home", "Channels", "DMs", "Logs")
+    val tabs = listOf("Contacts", "Channels", "DMs", "Logs")
+    var profileReturn by rememberSaveable { mutableStateOf("Contacts") }
     val focus = LocalFocusManager.current
     // Keep the browsing order stable while new messages reorder the inbox.
     var chatOrder by rememberSaveable { mutableStateOf(emptyList<String>()) }
@@ -99,6 +100,8 @@ fun HelperScreen(
     }
     val closeChat: () -> Unit = { focus.clearFocus(); onCloseConversation() }
     val selectTab: (String) -> Unit = { focus.clearFocus(); onCloseConversation(); destination = it }
+    val openProfile: () -> Unit = { focus.clearFocus(); profileReturn = destination; destination = "Profile" }
+    val closeProfile: () -> Unit = { focus.clearFocus(); destination = profileReturn }
     val conversation = inbox.conversation
     LaunchedEffect(conversation?.kind, conversation?.id) {
         if (conversation != null) {
@@ -113,8 +116,8 @@ fun HelperScreen(
     val nextChat = orderedPeers.getOrNull(chatIndex + 1)?.takeIf { chatIndex >= 0 }
     val previousAction: (() -> Unit)? = previousChat?.let { { focus.clearFocus(); onOpenConversation(it) } }
     val nextAction: (() -> Unit)? = nextChat?.let { { focus.clearFocus(); onOpenConversation(it) } }
-    BackHandler(enabled = conversation != null || destination != "Home") {
-        if (conversation != null) closeChat() else selectTab("Home")
+    BackHandler(enabled = conversation != null || destination != "Contacts") {
+        if (conversation != null) closeChat() else if (destination == "Profile") closeProfile() else selectTab("Contacts")
     }
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -136,15 +139,19 @@ fun HelperScreen(
                         IconButton(onClick = { previousAction?.invoke() }, enabled = previousAction != null) { Icon(painterResource(R.drawable.ic_previous), "Previous chat") }
                         IconButton(onClick = { nextAction?.invoke() }, enabled = nextAction != null) { Icon(painterResource(R.drawable.ic_next), "Next chat") }
                     }
+                } else if (destination == "Profile") {
+                    IconButton(onClick = closeProfile) { Icon(painterResource(R.drawable.ic_back), "Back") }
+                    Text("Profile", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                 } else {
                     Image(painterResource(R.drawable.meshcore_g2), contentDescription = "MeshCore G2 logo", modifier = Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)))
-                    Text("MeshCore G2", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Text("MeshCore G2", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    IconButton(onClick = openProfile) { Icon(painterResource(R.drawable.ic_person), "Profile") }
                 }
             }
         },
         bottomBar = {
-            if (conversation == null) NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
-                listOf("Home" to R.drawable.ic_home, "Channels" to R.drawable.ic_channels, "DMs" to R.drawable.ic_messages, "Logs" to R.drawable.ic_logs).forEach { (name, icon) ->
+            if (conversation == null && destination != "Profile") NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
+                listOf("Contacts" to R.drawable.ic_contacts, "Channels" to R.drawable.ic_channels, "DMs" to R.drawable.ic_messages, "Logs" to R.drawable.ic_logs).forEach { (name, icon) ->
                     NavigationBarItem(
                         selected = destination == name,
                         onClick = { selectTab(name) },
@@ -171,6 +178,9 @@ fun HelperScreen(
                     ConversationScreen(activeChat, snapshot, state, onOlderMessages, onSendMessage,
                         Modifier.fillMaxSize().imePadding(),
                         onPrevious = previousAction, onNext = nextAction)
+                } else if (tab == "Profile") {
+                    ProfileScreen(state, onScan, onStopScan, onConnect, onDisconnect, onCopyKey, onDismissNotice,
+                        Modifier.fillMaxSize(), profileList, notificationsEnabled, onNotifications)
                 } else {
                     val tabIndex = tabs.indexOf(tab)
                     val tabContent = Modifier.fillMaxSize().swipeNavigation(
@@ -180,7 +190,7 @@ fun HelperScreen(
                     when (tab) {
                         "Channels", "DMs" -> ConversationsScreen(if (tab == "Channels") "channel" else "direct", snapshot, openChat, tabContent.imePadding())
                         "Logs" -> LogsScreen(state, snapshot, tabContent)
-                        else -> HomeScreen(state, onScan, onStopScan, onConnect, onDisconnect, onCopyKey, onDismissNotice, tabContent, homeList, notificationsEnabled, onNotifications)
+                        else -> ContactsScreen(state, snapshot, openProfile, tabContent.imePadding())
                     }
                 }
             }
@@ -189,7 +199,7 @@ fun HelperScreen(
 }
 
 @Composable
-private fun HomeScreen(
+private fun ProfileScreen(
     state: HelperUiState,
     onScan: () -> Unit,
     onStopScan: () -> Unit,
@@ -198,14 +208,14 @@ private fun HomeScreen(
     onCopyKey: () -> Unit,
     onDismissNotice: () -> Unit,
     modifier: Modifier,
-    homeList: androidx.compose.foundation.lazy.LazyListState,
+    profileList: androidx.compose.foundation.lazy.LazyListState,
     notificationsEnabled: Boolean,
     onNotifications: () -> Unit,
 ) {
     val connected = state.radio.state() == "connected"
     val connecting = state.radio.state() in listOf("pairing", "connecting", "discovering", "subscribing", "initializing")
     LazyColumn(
-        state = homeList,
+        state = profileList,
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),

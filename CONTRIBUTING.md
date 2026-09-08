@@ -74,7 +74,8 @@ pairing and the complete glasses connection. See the
 2. Connect it to your computer by USB and accept the debugging prompt. Select
    the phone in Android Studio and click **Run**. You can also
    [pair over Wi-Fi](https://developer.android.com/studio/run/device).
-3. Open **MeshCore G2**, grant its permissions, and tap **Find a radio**.
+3. Open **MeshCore G2**, tap **Profile** in the header, grant its permissions,
+   and tap **Find a radio**.
    Disconnect other MeshCore apps from the radio first. Android 11 and earlier
    also need Location permission and Location enabled for scanning.
 4. Once connected, tap **Copy connection key**. Paste it into **MeshCore G2** in
@@ -85,7 +86,8 @@ Keep the helper running, and stop any other installed helper edition first.
 Run `npm run check:even` or `npm run check:android` for the app you changed; use
 `npm run check` and `npm run pack` for changes across both apps. With an emulator
 or phone connected, run `./gradlew connectedDebugAndroidTest` from `apps/android`
-to test saved history and chat navigation. These tests use synthetic messages and do not send radio messages. Notification
+to test saved contacts, the 100-packet retention limit and restart persistence,
+profile navigation, and chat history. These tests use synthetic messages and do not send radio messages. Notification
 tests require notifications enabled for the development helper; they create and
 remove only their own test alerts and message rows. UI captures are written to the
 app's external `files/screenshots` directory.

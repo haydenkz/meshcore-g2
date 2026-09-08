@@ -21,6 +21,30 @@ public class MessageStoreTest {
     private MessageStore open() { store = new MessageStore(context, database); return store; }
     @After public void cleanup() { if (store != null) store.close(); context.deleteDatabase(database); }
 
+    @Test public void contactsIncludeEveryNodeTypeAndKeepMetadataOnKeyOnlyDetection() throws Exception {
+        open();
+        for (int type = 0; type <= 4; type++) {
+            String key = String.format(java.util.Locale.ROOT, "%064x", type + 1);
+            store.contact(radio, new ContactInfo(key, type == 1 ? "Alice" : "", type, type * 1000));
+        }
+        String aliceKey = String.format(java.util.Locale.ROOT, "%064x", 2);
+        store.advert(radio, new ContactInfo(aliceKey, "", 0), 10000);
+        store.contact(radio, new ContactInfo(aliceKey, "Alice", 1, 1000));
+        String otherRadio = "b".repeat(64);
+        store.contact(otherRadio, new ContactInfo(aliceKey, "Different radio contact", 4));
+        // Earlier versions stored a key-only advert without a nodes row.
+        String legacyKey = "ab".repeat(32);
+        store.getWritableDatabase().execSQL("INSERT INTO adverts(radio,public_key,received_at) VALUES (?,?,?)", new Object[]{radio, legacyKey, 5000});
+        store.close(); open();
+        java.util.List<MessageStore.SavedContact> contacts = store.contacts();
+        assertEquals(7, contacts.size());
+        assertEquals(new MessageStore.SavedContact(radio, aliceKey, "Alice", 1, 10000), contacts.get(0));
+        assertEquals(new MessageStore.SavedContact(radio, legacyKey, "", 0, 5000), contacts.get(1));
+        assertTrue(contacts.contains(new MessageStore.SavedContact(otherRadio, aliceKey, "Different radio contact", 4, 0)));
+        assertEquals(0, contacts.get(contacts.size() - 1).detectedAt());
+        assertEquals(1, new JSONArray(store.conversations("direct")).length());
+    }
+
     @Test public void onlyNewlySavedIncomingMessagesAreEligibleForNotification() {
         open();
         ReceivedMessage incoming = new ReceivedMessage("channel", "0", "Alice", "Meet at the trailhead", 1000);

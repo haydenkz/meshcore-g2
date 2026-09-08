@@ -7,13 +7,22 @@ All notable changes to this project will be documented here, following
 
 ### Changed
 
+- Open Android to Contacts with searchable users, repeaters, sensors, room servers,
+  and unknown nodes. Show type icons, full public keys, and last detection times,
+  including unnamed nodes and offline history. Move radio, glasses, and notification
+  controls into Profile, opened from the header.
+- Save the newest 100 received radio packets privately on the phone across
+  reconnects and app restarts. Retain packet details and source companion identity,
+  automatically evict older packets, and keep capture running while the log view
+  is paused.
+
 - Make Android chats more compact with flat conversation rows, smaller message
   bubbles, grouped senders, date dividers, and a jump to the latest messages.
   Fade between tabs and swipe across tabs or adjacent chats while retaining drafts
   and search state. Keep chat browsing order stable as new messages arrive.
 - Expand Android radio logs with millisecond timestamps, packet headers, path
   hashes, transport codes, payload sizes, and selectable raw packet hex. Add packet
-  filters and pause/resume for inspecting the current connection's 200-packet buffer.
+  filters and pause/resume for inspecting saved packets.
 
 - Remove the battery readout and Stop footer from Android Home. The notification
   retains its Stop action.
