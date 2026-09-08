@@ -7,6 +7,10 @@ All notable changes to this project will be documented here, following
 
 ### Changed
 
+- Simplify the Even phone page to radio status and helper setup, with a logo
+  heading, version footer, and APK download link. Remove connection diagnostics,
+  battery voltage, and manual reconnect; saved links retry automatically when the
+  helper returns.
 - Receive channel and direct messages from the radio, save them privately on the
   phone, and expose authenticated, paginated history for the glasses.
 - Read the radio's TX/RX packet totals through the existing BLE command queue.

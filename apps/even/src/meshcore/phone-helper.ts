@@ -2,7 +2,6 @@ import type { MeshCoreSnapshot, MeshCoreSource } from './source.ts'
 import { normalizeHelperKey } from './helper-link.ts'
 
 export const PHONE_HELPER_URL = 'http://127.0.0.1:8765/v1/status'
-export const PHONE_HELPER_HEALTH_URL = 'http://127.0.0.1:8765/health'
 const connectingStates = [
   'pairing',
   'connecting',
@@ -66,6 +65,15 @@ export function parsePhoneSnapshot(value: unknown): MeshCoreSnapshot {
   }
 }
 
+export class HelperAuthenticationError extends Error {
+  constructor() {
+    super(
+      'Connection key not accepted. Copy the current key from MeshCore G2 Helper and paste it below.',
+    )
+    this.name = 'HelperAuthenticationError'
+  }
+}
+
 export class PhoneHelperSource implements MeshCoreSource {
   private readonly key: string
   private readonly fetcher: typeof fetch
@@ -84,10 +92,7 @@ export class PhoneHelperSource implements MeshCoreSource {
       redirect: 'error',
       signal,
     })
-    if (response.status === 401)
-      throw new Error(
-        'Connection key not accepted. In Connection details, forget the helper and link again.',
-      )
+    if (response.status === 401) throw new HelperAuthenticationError()
     if (!response.ok)
       throw new Error(`Phone helper unavailable (${response.status}).`)
     return parsePhoneSnapshot(await response.json())
