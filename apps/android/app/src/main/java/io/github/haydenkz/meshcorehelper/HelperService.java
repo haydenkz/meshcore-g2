@@ -18,6 +18,10 @@ public final class HelperService extends Service {
     private final AtomicReference<String> json = new AtomicReference<>("{}");
     private BleCompanion companion;
     private StatusServer server;
+    private MessageStore messages;
+    private String radioId;
+    private Long packetsSent;
+    private Long packetsReceived;
     public String detail = "Starting phone helper…";
     public boolean available;
     public final MutableLiveData<HelperSnapshot> snapshot = new MutableLiveData<>(
@@ -39,15 +43,27 @@ public final class HelperService extends Service {
     }
     @Override public void onCreate() {
         super.onCreate();
+        messages = new MessageStore(this);
         startHelper();
     }
     private void startHelper() {
         available = false;
         if (server != null) server.stop();
         if (companion != null) companion.dispose();
-        companion = new BleCompanion(this, this::update);
+        companion = new BleCompanion(this, new BleCompanion.Listener() {
+            @Override public void update(String state, String detail, String name, Integer version, Integer battery) { HelperService.this.update(state, detail, name, version, battery); }
+            @Override public void radio(String id) { radioId = id; }
+            @Override public void message(ReceivedMessage message) { messages.add(radioId, message); }
+            @Override public void channel(int index, String name) { messages.name(radioId, "channel", Integer.toString(index), name); }
+            @Override public void contact(String prefix, String name) { messages.name(radioId, "direct", prefix, name); }
+            @Override public void packets(Long sent, Long received) {
+                packetsSent = sent; packetsReceived = received;
+                HelperSnapshot current = snapshot.getValue();
+                if (current != null) update(current.state(), current.detail(), current.name(), current.protocolVersion(), current.batteryMillivolts());
+            }
+        });
         update("disconnected", "Choose a nearby MeshCore companion.", "", null, null);
-        server = new StatusServer(key(this), json::get);
+        server = new StatusServer(key(this), json::get, messages);
         try { server.start(5000, true); available = true; }
         catch (IOException error) { detail = "Cannot open the phone helper port. Stop any other helper and retry."; }
     }
@@ -74,13 +90,16 @@ public final class HelperService extends Service {
     public String diagnostics() { return server == null ? "Local helper not running." : server.diagnostics(); }
     public long lastHudReadAt() { return server == null ? 0 : server.lastHudReadAt(); }
     private void update(String state, String message, String name, Integer version, Integer battery) {
+        if (!state.equals("connected")) { packetsSent = null; packetsReceived = null; }
         detail = message + (name.isEmpty() ? "" : "\n" + name)
                 + (battery == null ? "" : "\nBattery: " + battery + " mV");
         JSONObject snapshot = new JSONObject();
         try {
             snapshot.put("schema", 1).put("state", state).put("detail", message).put("name", name)
                     .put("protocolVersion", version == null ? JSONObject.NULL : version)
-                    .put("batteryMillivolts", battery == null ? JSONObject.NULL : battery);
+                    .put("batteryMillivolts", battery == null ? JSONObject.NULL : battery)
+                    .put("packetsSent", packetsSent == null ? JSONObject.NULL : packetsSent)
+                    .put("packetsReceived", packetsReceived == null ? JSONObject.NULL : packetsReceived);
         } catch (JSONException error) { throw new IllegalStateException(error); }
         json.set(snapshot.toString());
         this.snapshot.setValue(new HelperSnapshot(state, message, name, version, battery));
@@ -93,5 +112,5 @@ public final class HelperService extends Service {
         snapshot.setValue(new HelperSnapshot("disconnected", "Helper stopped. Scan to reconnect.", "", null, null));
         stopForeground(STOP_FOREGROUND_REMOVE);
     }
-    @Override public void onDestroy() { shutdown(); super.onDestroy(); }
+    @Override public void onDestroy() { shutdown(); if (messages != null) messages.close(); super.onDestroy(); }
 }

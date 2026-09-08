@@ -40,6 +40,10 @@ public final class CompanionProtocol {
         private byte[] response;
         private String name;
         private int version;
+        private String radioId;
+        private int channels = 8;
+        public String radioId() { return radioId; }
+        public int channels() { return channels; }
 
         public Handshake(Consumer<byte[]> write, Consumer<Identity> ready, Consumer<String> failed) {
             this.write = write;
@@ -66,11 +70,13 @@ public final class CompanionProtocol {
             int minimum = new int[]{58, 2, 3}[step];
             if (response.length < minimum) { fail("The radio returned an incomplete reply."); return; }
             if (step == 0) {
+                radioId = ReceivedMessage.hex(response, 4, 32);
                 int end = 58;
                 while (end < response.length && response[end] != 0) end++;
                 name = new String(response, 58, end - 58, StandardCharsets.UTF_8).trim();
             } else if (step == 1) {
                 version = response[1] & 0xff;
+                if (response.length >= 4) channels = response[3] & 0xff;
             } else {
                 int voltage = (response[1] & 0xff) | ((response[2] & 0xff) << 8);
                 ended = true;
