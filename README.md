@@ -16,6 +16,14 @@ The Android helper connects to a MeshCore companion over Bluetooth. The Even Hub
 plugin reads the helper on the same phone. Read and send channel messages and DMs
 on Android, with the same saved history available on the glasses.
 
+## Screenshots
+
+|                              Channels                              |                                Direct messages                                 |                            Recent adverts                             |
+| :----------------------------------------------------------------: | :----------------------------------------------------------------------------: | :-------------------------------------------------------------------: |
+| ![Channel message on the glasses](assets/screenshots/channels.png) | ![Direct message chats on the glasses](assets/screenshots/direct-messages.png) | ![Saved advert on the glasses](assets/screenshots/recent-adverts.png) |
+
+Captured in the Even simulator with sample data.
+
 ## Setup
 
 Requires Android 8+, Even App 2.2.10+, G2 glasses, and a radio running MeshCore
