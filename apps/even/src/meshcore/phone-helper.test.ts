@@ -16,6 +16,31 @@ const connected = {
   protocolVersion: 8,
 }
 
+test('packet totals preserve unsigned radio counters, allow older helpers, and clear on disconnect', () => {
+  const snapshot = parsePhoneSnapshot({
+    ...connected,
+    packetsSent: 0,
+    packetsReceived: 4294967295,
+  })
+  assert.equal(snapshot.packetsSent, 0)
+  assert.equal(snapshot.packetsReceived, 4294967295)
+  assert.equal(parsePhoneSnapshot(connected).packetsSent, undefined)
+  for (const value of [-1, 4294967296, 1.5, '12', null]) {
+    assert.equal(
+      parsePhoneSnapshot({ ...connected, packetsSent: value }).packetsSent,
+      undefined,
+    )
+  }
+  const offline = parsePhoneSnapshot({
+    ...connected,
+    state: 'disconnected',
+    packetsSent: 12,
+    packetsReceived: 34,
+  })
+  assert.equal(offline.packetsSent, undefined)
+  assert.equal(offline.packetsReceived, undefined)
+})
+
 test('connected status requires complete radio information and preserves voltage units', () => {
   const snapshot = parsePhoneSnapshot(connected)
   assert.equal(snapshot.mode, 'live')

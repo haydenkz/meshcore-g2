@@ -13,7 +13,8 @@
 </p>
 
 The Android helper connects to a MeshCore companion over Bluetooth. The Even Hub
-plugin reads the helper on the same phone and displays radio status on the glasses.
+plugin reads the helper on the same phone and displays channel messages and direct
+message chats on the glasses. Received messages are saved by the helper.
 
 ## Setup
 
@@ -30,6 +31,10 @@ companion BLE firmware.
    the Even App and tap **Link phone helper**.
 
 Keep the helper running while using the glasses.
+
+On the glasses, tap then hold to switch between **Channels** and **Direct messages**.
+Swipe between message cards, tap to open, and double-tap to go back. TX/RX show the radio's
+sent and received packet totals; unavailable counts appear as dashes.
 
 ## Development
 

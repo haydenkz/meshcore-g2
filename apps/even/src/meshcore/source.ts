@@ -4,6 +4,8 @@ export interface MeshCoreSnapshot {
   readonly deviceName?: string
   readonly batteryMillivolts?: number
   readonly protocolVersion?: number
+  readonly packetsSent?: number
+  readonly packetsReceived?: number
   readonly detail?: string
 }
 
