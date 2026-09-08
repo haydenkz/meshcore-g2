@@ -7,6 +7,8 @@ All notable changes to this project will be documented here, following
 
 ### Changed
 
+- Remove the battery readout and Stop footer from Android Home. The notification
+  retains its Stop action.
 - Use the shared logo in the Android header and name both Android editions
   MeshCore G2. Simplify Home by hiding Nearby radios while connected, removing
   the tagline, redundant linking copy, and connection debugging controls.

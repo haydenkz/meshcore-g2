@@ -56,7 +56,6 @@ class MainActivity : ComponentActivity() {
                         getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
                         Toast.makeText(this, "Paste once into MeshCore G2 in the Even App.", Toast.LENGTH_LONG).show()
                     },
-                    onStopHelper = model::stopHelper,
                     onDismissNotice = model::dismissNotice,
                 )
             }

@@ -170,12 +170,6 @@ class HelperViewModel(application: Application) : AndroidViewModel(application) 
         helper?.connect(device)
     }
     fun disconnect() { stopScan(); helper?.disconnect() }
-    fun stopHelper() {
-        stopScan()
-        releaseBinding()
-        app.stopService(Intent(app, HelperService::class.java))
-        mutableState.update { HelperUiState(notice = "Helper stopped.") }
-    }
     private fun releaseBinding() {
         scanOnBind = false
         observation?.cancel()
