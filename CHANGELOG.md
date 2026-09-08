@@ -7,6 +7,8 @@ All notable changes to this project will be documented here, following
 
 ### Changed
 
+- Simplify the README and contributor setup for the Even simulator, glasses,
+  Android emulator, and physical phones.
 - Use a shared pixelated green MeshCore icon for the Android launcher and Even
   phone page, with matching monochrome artwork for the Even portal.
 
