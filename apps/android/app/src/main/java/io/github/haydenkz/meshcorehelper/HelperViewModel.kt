@@ -28,6 +28,7 @@ data class HelperUiState(
     val scanning: Boolean = false,
     val devices: List<NearbyRadio> = emptyList(),
     val notice: String? = null,
+    val logs: List<RadioLog> = emptyList(),
     val hudLinked: Boolean = false,
 )
 
@@ -55,6 +56,9 @@ class HelperViewModel(application: Application) : AndroidViewModel(application) 
             observation = viewModelScope.launch {
                 launch { service.snapshot.asFlow().collect { radio ->
                     mutableState.update { it.copy(radio = radio, running = service.available) }
+                } }
+                launch { service.radioLogs.asFlow().collect { logs ->
+                    mutableState.update { it.copy(logs = logs) }
                 } }
                 while (true) {
                     val lastRead = service.lastHudReadAt()

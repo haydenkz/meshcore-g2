@@ -18,6 +18,7 @@ public final class BleCompanion {
         default void channel(int index, String name) {}
         default void contact(String prefix, String name) {}
         default void packets(Long sent, Long received) {}
+        default void radioLog(RadioLog entry) {}
     }
     private final Context context;
     private final Listener listener;
@@ -34,6 +35,7 @@ public final class BleCompanion {
     private boolean disposed;
     private int negotiatedMtu = 23;
     private boolean discoveryStarted;
+    private long logSequence;
 
     private final BroadcastReceiver bondReceiver = new BroadcastReceiver() {
         @Override public void onReceive(Context ignored, Intent intent) {
@@ -197,6 +199,12 @@ public final class BleCompanion {
         handler.post(() -> {
             if (connection != gatt) return;
             try {
+                RadioLog log = RadioLog.parse(logSequence + 1, System.currentTimeMillis(), copy);
+                if (log != null) {
+                    logSequence++;
+                    listener.radioLog(log);
+                    return;
+                }
                 if (handshake != null) handshake.onFrame(copy);
                 else if (messageSync != null) {
                     if (copy.length > 0 && (copy[0] == 2 || copy[0] == 3)) armTimeout(10000, "Reading radio contacts timed out. Reconnect and retry.");
