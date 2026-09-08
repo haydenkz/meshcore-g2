@@ -1,76 +1,66 @@
-<div align="center">
+# MeshCore G2
 
-# MeshCore HUD
+Read your MeshCore companion's connection status and battery voltage on Even
+Realities G2 glasses. This initial connection uses two apps on one Android phone:
 
-**A small window into your mesh.**
+- **MeshCore G2 Helper** in `android-helper/` owns the radio's BLE connection.
+- **MeshCore G2** in this directory runs inside the Even App and reads the helper
+  over an authenticated connection to `127.0.0.1` on the same phone.
 
-A lightweight [MeshCore](https://meshcore.co.uk/) HUD for Even Realities G2 smart glasses.
+No computer or cloud relay is needed while using the installed pair. Sending and
+receiving messages are not implemented. Battery voltage is read when connecting.
+iOS is not supported.
 
-[![CI](https://github.com/haydenkz/meshcore-g2/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/haydenkz/meshcore-g2/actions/workflows/ci.yml)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://github.com/haydenkz/meshcore-g2/blob/main/tsconfig.json)
-[![Even Hub](https://img.shields.io/badge/Even_Hub-G2-A5ECAE?labelColor=232323)](https://hub.evenrealities.com/docs)
+## Install and connect
 
-[Get started](#-get-started) · [Development guide](docs/development.md) · [Connection research](docs/architecture.md) · [Changelog](CHANGELOG.md)
+The current tested pair is Even plugin **0.1.2** and helper **0.2.1**. You need an
+Android 8+ phone, a radio running MeshCore companion BLE firmware, G2 glasses, and
+Even App 2.2.10+.
 
-</div>
+1. Install the helper's debug APK from the build below. These early test APKs use
+   a development signing key; no production release has been published yet.
+2. Open MeshCore G2 Helper. Grant Nearby devices and notifications. Android 11
+   and earlier also need Location permission and Location enabled for scanning.
+3. Disconnect other MeshCore apps from the radio, tap **Find a radio**, and select
+   your companion. Complete Android's pairing prompt if shown.
+4. Install the Even package through your own Even developer project's private
+   builds, or ask the maintainer for beta group access. Downloading an `.ehpk`
+   alone does not install it. See [Even beta testing](https://hub.evenrealities.com/docs/test/beta-testing).
+5. When the helper shows Connected and battery voltage, tap **Copy connection
+   key**. Paste it into MeshCore G2 inside Even and tap **Link phone helper**.
 
----
+The link is remembered in the Even host. Connection details provides a health and
+key check, reconnect, forget, and demo controls. Keep the helper service running
+while using the glasses. Reliable locked-phone operation still needs beta-build
+hardware coverage.
 
-### ◉ Status
+## Build and validate
 
-**First milestone: scaffold and package delivery.** The SDK-backed HUD shows
-“MeshCore HUD”, **DEMO MODE**, and **Companion: disconnected**. Double-tap exits.
-The official simulator provides development without glasses or a radio.
-
-<div align="center">
-  <img src="docs/images/hud-simulator.png" width="576" alt="Official simulator showing MeshCore HUD, demo mode, companion disconnected, and double-tap to exit" />
-</div>
-
-**Planned:** real companion connectivity, battery information, incoming messages,
-and supported radio details. None of these live features is implemented yet.
-Bluetooth access from the Even App remains unverified; see the
-[connection options and limitations](docs/architecture.md#connection-options).
-
-### ↗ Get started
-
-Use Node **24.19.0 LTS** and npm. With [nvm](https://github.com/nvm-sh/nvm) installed:
+Install Node 24.19.0, JDK 17, Android SDK platform 35 and build-tools 35.0.0.
+Set `ANDROID_HOME`, or add ignored `android-helper/local.properties` with your
+`sdk.dir`. Accept Android SDK licenses.
 
 ```sh
-nvm install
-nvm use
 npm ci
-npm run dev
+npm run check
+npm run pack
+cd android-helper
+./gradlew testDebugUnitTest lintDebug assembleDebug
 ```
 
-In another terminal, run `npm run simulate`. A normal browser shows the phone
-page; the simulator provides the SDK bridge and glasses display.
+The Even installer is `meshcore-hud.ehpk`; the APK is
+`android-helper/app/build/outputs/apk/debug/app-debug.apk`. On Windows use
+`gradlew.bat`. Install both on the same phone. Never commit generated packages,
+connection keys, wireless debugging codes, or signing keys.
 
-For real G2 testing, use Even App **2.2.10+**, keep phone and computer on the same
-network, and run `npm run qr -- --url http://YOUR_LAN_IP:5173`. Scan from the Even
-App. [Device checklist and simulator details →](docs/development.md)
+For development, `npm run dev` serves the phone UI and `npm run simulate` opens
+the official simulator. Run `npm run qr -- --url http://YOUR_COMPUTER_IP:5173` for
+Even's local testing flow. A packaged Even beta build is needed for background
+and locked-phone testing.
 
-### ⌘ Development
+See [architecture](docs/architecture.md), [development](docs/development.md), and
+[validation](docs/validation.md). CI currently checks and packages the Even app;
+Android tests and builds are run locally until the paired CI workflow lands.
 
-```sh
-npm run check   # Format, lint, strict types, behavior tests, build
-npm run pack    # Build and create meshcore-hud.ehpk
-```
-
-Work on a branch, make focused commits, update `CHANGELOG.md`, and open a PR
-against `main`. Leave merging to review. See [AGENTS.md](AGENTS.md) for commands.
-
-CI checks every PR and push to `main`. Successful PR, `main`, and manual runs
-produce a downloadable `.ehpk` under the
-[workflow run’s **Artifacts**](https://github.com/haydenkz/meshcore-g2/actions/workflows/ci.yml).
-Even Hub publication is a later milestone.
-
-The app keeps a small MeshCore data-source interface separate from HUD rendering.
-Read the [architecture](docs/architecture.md) and
-[validation record](docs/validation.md) for verified behavior and hardware gaps.
-
-<div align="center">
-
-Built from the [official minimal starter](https://github.com/even-realities/evenhub-templates/tree/main/minimal).
-Independent community project; not affiliated with MeshCore or Even Realities.
-
-</div>
+Independent project; not affiliated with MeshCore or Even Realities. The Even
+starter's license is in [THIRD_PARTY_NOTICES.md](public/THIRD_PARTY_NOTICES.md).

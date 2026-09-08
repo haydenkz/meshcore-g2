@@ -4,20 +4,69 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#171d19" />
-    <title>MeshCore HUD</title>
+    <title>MeshCore G2</title>
   </head>
   <body>
     <main>
-      <p class="eyebrow">EVEN G2 · DEMO</p>
-      <h1>MeshCore HUD</h1>
-      <p>A small window into your mesh.</p>
-      <p id="status" role="status">
-        Waiting for the Even host. Open this app in the official simulator or
-        the Even App to display the HUD.
-      </p>
-      <p class="note">
-        Radio connectivity is planned. This demo uses mock data.
-      </p>
+      <h1>MeshCore G2</h1>
+      <p>Connect your MeshCore companion through the Android phone helper.</p>
+      <section
+        class="radio-card"
+        aria-labelledby="radio-name"
+        data-state="demo"
+      >
+        <h2 id="radio-name">Connect your radio</h2>
+        <p id="connection-badge">Demo</p>
+        <p id="status" role="status">Link your phone helper to get started.</p>
+        <dl>
+          <dt>Battery voltage at connection</dt>
+          <dd id="battery">—</dd>
+          <dt>Glasses display</dt>
+          <dd id="glasses-state">Waiting</dd>
+        </dl>
+      </section>
+      <section aria-labelledby="helper-heading">
+        <h2 id="helper-heading">Phone helper</h2>
+        <span id="helper-indicator" hidden>Linked</span>
+        <form id="helper-form">
+          <p class="note">
+            Connect your radio in MeshCore G2 Helper, then copy its connection
+            key here once.
+          </p>
+          <label for="helper-key">Connection key</label>
+          <input
+            id="helper-key"
+            type="password"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            required
+            maxlength="64"
+            placeholder="Paste from the helper"
+          />
+          <button type="submit">Link phone helper</button>
+        </form>
+        <div id="linked-actions" hidden>
+          <p id="helper-summary" class="note">Connecting on this phone…</p>
+          <button id="reconnect" type="button">Reconnect</button>
+        </div>
+      </section>
+      <details class="connection-details" open>
+        <summary>Connection details</summary>
+        <p id="link-status" class="note" role="status">
+          Your helper link will be saved on this phone.
+        </p>
+        <p id="hud-status" class="note" role="status">
+          Open in the Even App to display the HUD.
+        </p>
+        <p id="radio-diagnostics" class="note"></p>
+        <button id="check-connection" type="button">Check connection</button>
+        <p id="connection-check" class="note" role="status"></p>
+        <button id="demo" type="button">Use demo</button>
+        <button id="forget-helper" type="button" hidden>Forget helper</button>
+        <p id="app-version" class="note"></p>
+      </details>
+      <p class="note">Keep the helper running while using your glasses.</p>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -1,11 +1,17 @@
 {
   "package_id": "io.github.haydenkz.meshcoreg2",
   "edition": "202601",
-  "name": "MeshCore HUD",
-  "version": "0.1.0",
+  "name": "MeshCore G2",
+  "version": "0.1.2",
   "min_app_version": "2.2.10",
   "min_sdk_version": "0.0.15",
   "entrypoint": "index.html",
-  "permissions": [],
+  "permissions": [
+    {
+      "name": "network",
+      "desc": "Read BLE companion status from the Android helper on this phone.",
+      "whitelist": ["http://127.0.0.1:8765"]
+    }
+  ],
   "supported_languages": ["en"]
 }

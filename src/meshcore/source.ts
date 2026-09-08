@@ -1,9 +1,12 @@
-/** Only the state used by this milestone; add telemetry with its real adapter. */
 export interface MeshCoreSnapshot {
   readonly mode: 'demo' | 'live'
-  readonly connection: 'disconnected' | 'connected'
+  readonly connection: 'disconnected' | 'connecting' | 'connected' | 'error'
+  readonly deviceName?: string
+  readonly batteryMillivolts?: number
+  readonly protocolVersion?: number
+  readonly detail?: string
 }
 
 export interface MeshCoreSource {
-  readSnapshot(): Promise<MeshCoreSnapshot>
+  readSnapshot(signal?: AbortSignal): Promise<MeshCoreSnapshot>
 }

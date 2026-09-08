@@ -43,3 +43,34 @@ h1 {
   color: #b4c2b7;
   font-size: 0.875rem;
 }
+
+* {
+  box-sizing: border-box;
+}
+main {
+  width: 100%;
+}
+section,
+details {
+  margin-top: 1.5rem;
+}
+label {
+  display: block;
+}
+input {
+  width: 100%;
+  padding: 0.75rem;
+  font: inherit;
+}
+button {
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.5rem;
+  font: inherit;
+}
+.note {
+  overflow-wrap: anywhere;
+}
+[hidden] {
+  display: none !important;
+}

@@ -6,6 +6,7 @@ import {
   OsEventTypeList,
   StartUpPageCreateResult,
   type CreateStartUpPageContainer,
+  type TextContainerUpgrade,
   type EvenHubEvent,
 } from '@evenrealities/even_hub_sdk'
 import { startHud } from './hud.ts'
@@ -24,6 +25,10 @@ function host(result = StartUpPageCreateResult.success) {
     onEvenHubEvent: mock.fn((callback: (event: EvenHubEvent) => void) => {
       listener = callback
       return unsubscribe
+    }),
+    textContainerUpgrade: mock.fn((_page: TextContainerUpgrade) => {
+      void _page
+      return Promise.resolve(true)
     }),
     shutDownPageContainer: mock.fn((_mode?: number) => {
       void _mode
@@ -49,7 +54,7 @@ test('the mock HUD identifies demo data and a disconnected companion', async () 
   )
   const page = bridge.createStartUpPageContainer.mock.calls[0]?.arguments[0]
   const text = page?.textObject?.[0]?.content ?? ''
-  assert.match(text, /MeshCore HUD/)
+  assert.match(text, /MeshCore G2/)
   assert.match(text, /DEMO MODE/)
   assert.match(text, /Companion: disconnected/)
   assert.match(text, /No live radio data/)
@@ -96,6 +101,7 @@ for (const envelope of ['sysEvent', 'textEvent', 'listEvent'] as const) {
     }
     emit(event)
     emit(event)
+    await setImmediate()
     assert.equal(bridge.shutDownPageContainer.mock.callCount(), 1)
     assert.equal(bridge.shutDownPageContainer.mock.calls[0]?.arguments[0], 0)
     await setImmediate()
@@ -137,3 +143,57 @@ for (const eventType of [
     assert.equal(bridge.shutDownPageContainer.mock.callCount(), 0)
   })
 }
+
+test('live updates replace text without recreating the page or duplicating unchanged snapshots', async () => {
+  const { bridge } = host()
+  const hud = await startHud(
+    bridge,
+    await mockMeshCoreSource.readSnapshot(),
+    (e) => assert.fail(String(e)),
+  )
+  const live = {
+    mode: 'live',
+    connection: 'connected',
+    deviceName: 'Trail radio',
+    batteryMillivolts: 3700,
+  } as const
+  await hud.update(live)
+  await hud.update(live)
+  assert.equal(bridge.createStartUpPageContainer.mock.callCount(), 1)
+  assert.equal(bridge.textContainerUpgrade.mock.callCount(), 1)
+  const page = bridge.textContainerUpgrade.mock.calls[0]?.arguments[0]
+  assert.match(page?.content ?? '', /Trail radio/)
+  assert.match(page?.content ?? '', /3700 mV/)
+  await hud.update({ mode: 'live', connection: 'error' })
+  assert.doesNotMatch(
+    bridge.textContainerUpgrade.mock.calls[1]?.arguments[0]?.content ?? '',
+    /3700/,
+  )
+  hud.dispose()
+  await hud.update(live)
+  assert.equal(bridge.textContainerUpgrade.mock.callCount(), 2)
+})
+
+test('shutdown waits for the in-flight text update and stops later updates', async () => {
+  const { bridge, emit } = host()
+  let release!: (value: boolean) => void
+  bridge.textContainerUpgrade.mock.mockImplementationOnce(
+    () =>
+      new Promise<boolean>((resolve) => {
+        release = resolve
+      }),
+  )
+  const hud = await startHud(
+    bridge,
+    await mockMeshCoreSource.readSnapshot(),
+    (e) => assert.fail(String(e)),
+  )
+  const update = hud.update({ mode: 'live', connection: 'connecting' })
+  await setImmediate()
+  emit({ sysEvent: { eventType: OsEventTypeList.DOUBLE_CLICK_EVENT } })
+  assert.equal(bridge.shutDownPageContainer.mock.callCount(), 0)
+  release(true)
+  await update
+  await setImmediate()
+  assert.equal(bridge.shutDownPageContainer.mock.callCount(), 1)
+})

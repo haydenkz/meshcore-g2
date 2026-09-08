@@ -6,3 +6,13 @@ dist/
 *.local
 *.log
 .DS_Store
+android-helper/.gradle/
+android-helper/**/build/
+android-helper/local.properties
+**/.idea/
+*.iml
+*.apk
+*.aab
+*.jks
+*.keystore
+*.p12
