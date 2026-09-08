@@ -1,0 +1,842 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "MeshCore G2 Android helper API",
+    "version": "1",
+    "description": "Read-only local HTTP API for independent clients. The Android helper owns BLE and saved history; Even hardware/software is not required. The service binds only to 127.0.0.1:8765 and requires Host: 127.0.0.1:8765. It must be running to serve history. API v1/schema 1 are independent of the app version. No send, radio-control, full contact-directory, or raw packet-history endpoints are exposed."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8765",
+      "description": "On the Android phone, or through adb forwarding on the same local port."
+    }
+  ],
+  "externalDocs": {
+    "description": "Setup, examples, pagination semantics, polling, errors, and client integration",
+    "url": "https://github.com/haydenkz/meshcore-g2/blob/main/docs/API.md"
+  },
+  "security": [
+    {
+      "HelperKey": []
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "getHealth",
+        "summary": "Check helper reachability",
+        "description": "Does not establish radio connectivity or validate authentication.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Helper service is reachable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "MeshCore phone helper is reachable. Return to the Even App and link it with your HUD key."
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/v1/status": {
+      "get": {
+        "operationId": "getStatus",
+        "summary": "Read radio status",
+        "description": "Current companion state and telemetry. Historical data remains readable while disconnected if the helper service is still running.",
+        "responses": {
+          "200": {
+            "description": "Successful read.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                },
+                "example": {
+                  "schema": 1,
+                  "state": "connected",
+                  "detail": "BLE companion connected (MTU 247).",
+                  "name": "Trail companion",
+                  "protocolVersion": 8,
+                  "batteryMillivolts": 3840,
+                  "packetsSent": 120,
+                  "packetsReceived": 845
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/HistoryError"
+          }
+        }
+      },
+      "options": {
+        "summary": "Browser preflight",
+        "description": "No authentication required. Exact Host header is still required. No response body.",
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Preflight accepted, with no body.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              },
+              "Access-Control-Allow-Origin": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "*"
+              },
+              "Access-Control-Allow-Methods": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "GET, OPTIONS"
+              },
+              "Access-Control-Allow-Headers": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "Authorization"
+              },
+              "Access-Control-Allow-Private-Network": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "true"
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "operationId": "preflightStatus"
+      }
+    },
+    "/v1/messages": {
+      "get": {
+        "operationId": "getMessages",
+        "summary": "Read saved messages",
+        "description": "Newest insertion IDs first, at most 16 items. Channel messages may span all saved radios. Direct messages require a complete peer conversation ID. Delivery can change on existing rows.",
+        "responses": {
+          "200": {
+            "description": "Successful read.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagePage"
+                },
+                "example": {
+                  "schema": 1,
+                  "items": [
+                    {
+                      "id": 42,
+                      "kind": "channel",
+                      "conversationId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:0",
+                      "conversationName": "Public",
+                      "senderName": "Alice",
+                      "text": "Meet at the trailhead",
+                      "sentAt": 1788891900000,
+                      "receivedAt": 1788891960000,
+                      "direction": "in",
+                      "delivery": "received"
+                    }
+                  ],
+                  "hasMore": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/HistoryError"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadQuery"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Before"
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "Message type.",
+            "schema": {
+              "type": "string",
+              "enum": ["channel", "direct"],
+              "default": "channel"
+            }
+          },
+          {
+            "name": "peer",
+            "in": "query",
+            "description": "Required for kind=direct. Radio public key (64 lowercase hex), colon, then 12 lowercase hex for a DM or 1–3 decimal digits for a channel. Omit with kind=channel to aggregate channels. Use an ID returned by the API.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}:([0-9]{1,3}|[a-f0-9]{12})$"
+            }
+          }
+        ]
+      },
+      "options": {
+        "summary": "Browser preflight",
+        "description": "No authentication required. Exact Host header is still required. No response body.",
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Preflight accepted, with no body.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              },
+              "Access-Control-Allow-Origin": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "*"
+              },
+              "Access-Control-Allow-Methods": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "GET, OPTIONS"
+              },
+              "Access-Control-Allow-Headers": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "Authorization"
+              },
+              "Access-Control-Allow-Private-Network": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "true"
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "operationId": "preflightMessages"
+      }
+    },
+    "/v1/chats": {
+      "get": {
+        "operationId": "getChats",
+        "summary": "List direct-message chats",
+        "description": "Only conversations with saved messages. Newest lastMessageId first, at most 16 items. New arrivals can reorder chats while paginating.",
+        "responses": {
+          "200": {
+            "description": "Successful read.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatPage"
+                },
+                "example": {
+                  "schema": 1,
+                  "items": [
+                    {
+                      "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:112233445566",
+                      "name": "Alice",
+                      "lastMessageId": 43,
+                      "updatedAt": 1788891960000,
+                      "preview": "See you there"
+                    }
+                  ],
+                  "hasMore": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/HistoryError"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadQuery"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Before"
+          }
+        ]
+      },
+      "options": {
+        "summary": "Browser preflight",
+        "description": "No authentication required. Exact Host header is still required. No response body.",
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Preflight accepted, with no body.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              },
+              "Access-Control-Allow-Origin": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "*"
+              },
+              "Access-Control-Allow-Methods": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "GET, OPTIONS"
+              },
+              "Access-Control-Allow-Headers": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "Authorization"
+              },
+              "Access-Control-Allow-Private-Network": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "true"
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "operationId": "preflightChats"
+      }
+    },
+    "/v1/adverts": {
+      "get": {
+        "operationId": "getAdverts",
+        "summary": "Read recent adverts",
+        "description": "Latest observation per companion and full node key, not every advert event. Sorted by receivedAt descending then id descending. Repeated observations update existing rows. Companion identity and full advertised keys are not returned.",
+        "responses": {
+          "200": {
+            "description": "Successful read.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvertPage"
+                },
+                "example": {
+                  "schema": 1,
+                  "items": [
+                    {
+                      "id": 17,
+                      "publicKeyPrefix": "112233445566",
+                      "name": "Hill repeater",
+                      "nodeType": "Repeater",
+                      "receivedAt": 1788891960000
+                    }
+                  ],
+                  "hasMore": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/HistoryError"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadQuery"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Before"
+          }
+        ]
+      },
+      "options": {
+        "summary": "Browser preflight",
+        "description": "No authentication required. Exact Host header is still required. No response body.",
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Preflight accepted, with no body.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "no-store"
+              },
+              "Access-Control-Allow-Origin": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "*"
+              },
+              "Access-Control-Allow-Methods": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "GET, OPTIONS"
+              },
+              "Access-Control-Allow-Headers": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "Authorization"
+              },
+              "Access-Control-Allow-Private-Network": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "true"
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "operationId": "preflightAdverts"
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "HelperKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Exact connection key copied from the helper; 64 lowercase hexadecimal characters. Not a JWT. Sent as Authorization: Bearer <key>."
+      }
+    },
+    "parameters": {
+      "Before": {
+        "name": "before",
+        "in": "query",
+        "description": "Exclusive older-page cursor; omit for newest page. Use the last item id for messages/adverts, or lastMessageId for chats. Advert cursors resolve the saved row’s current receivedAt; never substitute a timestamp. Keep endpoint and filters unchanged. Pages are not a frozen snapshot.",
+        "schema": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        }
+      }
+    },
+    "schemas": {
+      "Status": {
+        "type": "object",
+        "required": [
+          "schema",
+          "state",
+          "detail",
+          "name",
+          "protocolVersion",
+          "batteryMillivolts"
+        ],
+        "properties": {
+          "schema": {
+            "type": "integer",
+            "enum": [1]
+          },
+          "state": {
+            "type": "string",
+            "description": "Companion connection state.",
+            "enum": [
+              "disconnected",
+              "pairing",
+              "connecting",
+              "discovering",
+              "subscribing",
+              "initializing",
+              "connected",
+              "error"
+            ]
+          },
+          "detail": {
+            "type": "string",
+            "description": "Human-readable status, not a machine-readable error code."
+          },
+          "name": {
+            "type": "string",
+            "description": "Companion name; may be empty."
+          },
+          "protocolVersion": {
+            "type": "integer",
+            "description": "Negotiated radio protocol version, not the HTTP schema version.",
+            "format": "int64",
+            "minimum": 0,
+            "nullable": true,
+            "maximum": 255
+          },
+          "batteryMillivolts": {
+            "type": "integer",
+            "description": "Companion battery voltage in millivolts.",
+            "format": "int64",
+            "minimum": 0,
+            "nullable": true,
+            "maximum": 65535
+          },
+          "packetsSent": {
+            "type": "integer",
+            "description": "Radio cumulative TX count; unavailable when null or omitted. Can reset with the radio.",
+            "format": "int64",
+            "minimum": 0,
+            "nullable": true,
+            "maximum": 4294967295
+          },
+          "packetsReceived": {
+            "type": "integer",
+            "description": "Radio cumulative RX count; unavailable when null or omitted. Can reset with the radio.",
+            "format": "int64",
+            "minimum": 0,
+            "nullable": true,
+            "maximum": 4294967295
+          }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "conversationId",
+          "conversationName",
+          "senderName",
+          "text",
+          "sentAt",
+          "receivedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "description": "Stable database message ID and exclusive pagination cursor."
+          },
+          "kind": {
+            "type": "string",
+            "description": "Message type.",
+            "enum": ["channel", "direct"]
+          },
+          "conversationId": {
+            "type": "string",
+            "description": "Companion public key, colon, and channel index or DM peer prefix.",
+            "pattern": "^[a-f0-9]{64}:([0-9]{1,3}|[a-f0-9]{12})$"
+          },
+          "conversationName": {
+            "type": "string",
+            "description": "Saved conversation name or channel/key-prefix fallback."
+          },
+          "senderName": {
+            "type": "string",
+            "description": "Display name, not a full sender identity. Outgoing messages use You."
+          },
+          "text": {
+            "type": "string",
+            "description": "Saved message text; render as plain text."
+          },
+          "sentAt": {
+            "type": "integer",
+            "description": "Message timestamp in milliseconds since Unix epoch; sender clocks may differ.",
+            "format": "int64",
+            "minimum": 0
+          },
+          "receivedAt": {
+            "type": "integer",
+            "description": "Phone save/outbox insertion time in milliseconds since Unix epoch.",
+            "format": "int64",
+            "minimum": 0
+          },
+          "direction": {
+            "type": "string",
+            "description": "Message direction. Older builds may omit it.",
+            "enum": ["in", "out"],
+            "default": "in"
+          },
+          "delivery": {
+            "type": "string",
+            "description": "Delivery state can change without a new message ID. Older builds may omit it.",
+            "enum": [
+              "received",
+              "queued",
+              "sending",
+              "sent",
+              "awaiting_ack",
+              "delivered",
+              "failed",
+              "unconfirmed"
+            ],
+            "default": "received"
+          }
+        }
+      },
+      "Chat": {
+        "type": "object",
+        "required": ["id", "name", "lastMessageId", "updatedAt", "preview"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "DM conversation ID to use as peer when reading direct messages.",
+            "pattern": "^[a-f0-9]{64}:[a-f0-9]{12}$"
+          },
+          "name": {
+            "type": "string",
+            "description": "Saved contact name or peer-prefix fallback."
+          },
+          "lastMessageId": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "description": "Latest message ID; use as the chat pagination cursor."
+          },
+          "updatedAt": {
+            "type": "integer",
+            "description": "Latest message phone save time in milliseconds since Unix epoch.",
+            "format": "int64",
+            "minimum": 0
+          },
+          "preview": {
+            "type": "string",
+            "description": "Latest incoming or outgoing message text."
+          }
+        }
+      },
+      "Advert": {
+        "type": "object",
+        "required": ["id", "publicKeyPrefix", "name", "nodeType", "receivedAt"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "description": "Stable advert row ID; cursor resolves its current detection time."
+          },
+          "publicKeyPrefix": {
+            "type": "string",
+            "description": "First 12 hex characters of the advertised key. Not a unique node identity.",
+            "pattern": "^[a-f0-9]{12}$"
+          },
+          "name": {
+            "type": "string",
+            "description": "Saved node name or key-prefix fallback."
+          },
+          "nodeType": {
+            "type": "string",
+            "description": "Advertised node type.",
+            "enum": [
+              "Chat node",
+              "Repeater",
+              "Room server",
+              "Sensor",
+              "Unknown node"
+            ]
+          },
+          "receivedAt": {
+            "type": "integer",
+            "description": "Last known advert detection time in milliseconds since Unix epoch; from radio sync or live phone receipt.",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "MessagePage": {
+        "type": "object",
+        "required": ["schema", "items", "hasMore"],
+        "properties": {
+          "schema": {
+            "type": "integer",
+            "enum": [1]
+          },
+          "items": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            }
+          },
+          "hasMore": {
+            "type": "boolean",
+            "description": "Whether another older page exists."
+          }
+        }
+      },
+      "ChatPage": {
+        "type": "object",
+        "required": ["schema", "items", "hasMore"],
+        "properties": {
+          "schema": {
+            "type": "integer",
+            "enum": [1]
+          },
+          "items": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "$ref": "#/components/schemas/Chat"
+            }
+          },
+          "hasMore": {
+            "type": "boolean",
+            "description": "Whether another older page exists."
+          }
+        }
+      },
+      "AdvertPage": {
+        "type": "object",
+        "required": ["schema", "items", "hasMore"],
+        "properties": {
+          "schema": {
+            "type": "integer",
+            "enum": [1]
+          },
+          "items": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "$ref": "#/components/schemas/Advert"
+            }
+          },
+          "hasMore": {
+            "type": "boolean",
+            "description": "Whether another older page exists."
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadQuery": {
+        "description": "Invalid cursor, kind, or conversation ID. Direct messages require peer.",
+        "content": {
+          "text/plain": {
+            "schema": {
+              "type": "string"
+            },
+            "example": "Invalid history query"
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Missing or incorrect Authorization header.",
+        "content": {
+          "text/plain": {
+            "schema": {
+              "type": "string"
+            },
+            "example": "Invalid HUD key"
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Unsupported route, wrong Host header, or endpoint unavailable in an older helper.",
+        "content": {
+          "text/plain": {
+            "schema": {
+              "type": "string"
+            },
+            "example": "Not found"
+          }
+        }
+      },
+      "ReadOnly": {
+        "description": "A method other than GET/OPTIONS was used on a supported API route.",
+        "content": {
+          "text/plain": {
+            "schema": {
+              "type": "string"
+            },
+            "example": "Read only"
+          }
+        }
+      },
+      "HistoryError": {
+        "description": "The helper could not complete the read; retry later and check phone storage.",
+        "content": {
+          "text/plain": {
+            "schema": {
+              "type": "string"
+            },
+            "example": "Unable to read message history"
+          }
+        }
+      }
+    }
+  }
+}
