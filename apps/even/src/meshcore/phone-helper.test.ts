@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   PhoneHelperSource,
+  HelperAuthenticationError,
   PHONE_HELPER_URL,
   parsePhoneSnapshot,
 } from './phone-helper.ts'
@@ -96,7 +97,7 @@ test('invalid keys and unauthorized helper responses are actionable errors', asy
     'ab'.repeat(32),
     async () => new Response('', { status: 401 }),
   )
-  await assert.rejects(source.readSnapshot(), /key not accepted/)
+  await assert.rejects(source.readSnapshot(), HelperAuthenticationError)
 })
 
 test('fetch keeps its browser receiver when called through the source', async () => {

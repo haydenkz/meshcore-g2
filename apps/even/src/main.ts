@@ -1,10 +1,9 @@
 import { waitForEvenAppBridge } from '@evenrealities/even_hub_sdk'
 import { startHud, type HudController } from './hud.ts'
-import { mockMeshCoreSource } from './meshcore/mock.ts'
 import { HelperLinkStore, normalizeHelperKey } from './meshcore/helper-link.ts'
 import {
   PhoneHelperSource,
-  PHONE_HELPER_HEALTH_URL,
+  HelperAuthenticationError,
 } from './meshcore/phone-helper.ts'
 import type { MeshCoreSnapshot } from './meshcore/source.ts'
 import { version } from '../../../package.json'
@@ -16,9 +15,8 @@ const hudStatus = document.querySelector<HTMLParagraphElement>('#hud-status')!
 const linkStatus = document.querySelector<HTMLParagraphElement>('#link-status')!
 const keyInput = document.querySelector<HTMLInputElement>('#helper-key')!
 const form = document.querySelector<HTMLFormElement>('#helper-form')!
-const linkedActions = document.querySelector<HTMLDivElement>('#linked-actions')!
-const connectionCheck =
-  document.querySelector<HTMLParagraphElement>('#connection-check')!
+const forgetButton =
+  document.querySelector<HTMLButtonElement>('#forget-helper')!
 let hud: HudController | undefined
 let current: MeshCoreSnapshot = { mode: 'demo', connection: 'disconnected' }
 let source: PhoneHelperSource | undefined
@@ -29,12 +27,11 @@ let selectedKey: string | undefined
 let selectionRevision = 0
 let pendingSave = false
 let disposed = false
-let blockedPolicy = ''
 let helperReached = false
+let keyRejected = false
 
 document.querySelector<HTMLImageElement>('#app-icon')!.src = appIconUrl
 document.querySelector<HTMLLinkElement>('#app-favicon')!.href = appIconUrl
-
 document.querySelector('#app-version')!.textContent = `MeshCore G2 · ${version}`
 
 function stopPolling() {
@@ -45,58 +42,31 @@ function stopPolling() {
 }
 function render(snapshot: MeshCoreSnapshot) {
   current = snapshot
-  const state = snapshot.mode === 'demo' ? 'demo' : snapshot.connection
+  const state = snapshot.mode === 'demo' ? 'disconnected' : snapshot.connection
   document.querySelector<HTMLElement>('.radio-card')!.dataset.state = state
-  document.querySelector('#connection-badge')!.textContent = {
-    demo: 'Demo',
-    connected: 'Connected',
-    connecting: 'Connecting',
-    disconnected: 'Disconnected',
-    error: 'Needs attention',
-  }[state]
-  status.textContent =
-    snapshot.mode === 'demo'
-      ? 'No live radio data. Link your phone helper to get started.'
-      : snapshot.connection === 'connected'
-        ? 'Connected through your phone.'
-        : (snapshot.detail ?? 'Connect your radio in the phone helper.')
+  const badge = document.querySelector<HTMLSpanElement>('#connection-badge')!
+  badge.hidden = state !== 'connected' && state !== 'connecting'
+  badge.textContent = state === 'connected' ? 'Connected' : 'Connecting'
   document.querySelector('#radio-name')!.textContent =
-    snapshot.deviceName ||
-    (snapshot.connection === 'error'
-      ? helperReached
-        ? 'Radio needs attention'
-        : 'Helper unavailable'
-      : snapshot.connection === 'connecting'
-        ? 'Making a connection'
-        : 'Connect your radio')
-  document.querySelector('#battery')!.textContent =
-    snapshot.batteryMillivolts === undefined
-      ? '—'
-      : `${(snapshot.batteryMillivolts / 1000).toFixed(3)} V`
-  document.querySelector('#radio-diagnostics')!.textContent = [
-    snapshot.detail,
-    snapshot.protocolVersion === undefined
-      ? ''
-      : `Radio protocol: ${snapshot.protocolVersion}.`,
-  ]
-    .filter(Boolean)
-    .join(' ')
-  form.hidden = selectedKey !== undefined
-  linkedActions.hidden = selectedKey === undefined
-  document.querySelector<HTMLButtonElement>('#forget-helper')!.hidden =
-    selectedKey === undefined
-  document.querySelector<HTMLSpanElement>('#helper-indicator')!.hidden =
-    !helperReached
-  document.querySelector('#helper-summary')!.textContent =
-    snapshot.mode === 'demo'
-      ? 'Demo is showing. Reconnect to use your radio.'
-      : helperReached
-        ? 'Keep the helper running on this phone.'
-        : 'Waiting for the helper on this phone…'
-  document.querySelector<HTMLParagraphElement>('#helper-summary')!.hidden =
-    helperReached
-  document.querySelector<HTMLButtonElement>('#reconnect')!.hidden =
-    source !== undefined && snapshot.connection !== 'error'
+    state === 'connected'
+      ? snapshot.deviceName || 'Radio connected'
+      : state === 'connecting'
+        ? snapshot.deviceName || 'Connecting…'
+        : 'Not connected'
+  status.textContent =
+    state === 'connected'
+      ? 'Connected through your phone.'
+      : state === 'connecting'
+        ? 'Connecting to your radio through the phone helper…'
+        : state === 'error'
+          ? snapshot.detail || 'Check your radio in MeshCore G2 Helper.'
+          : selectedKey
+            ? helperReached
+              ? 'Connect your radio in MeshCore G2 Helper.'
+              : 'Open MeshCore G2 Helper. Your link will reconnect automatically.'
+            : 'Link your phone helper to get started.'
+  form.hidden = selectedKey !== undefined && !keyRejected
+  forgetButton.hidden = selectedKey === undefined
   void hud?.update(snapshot).catch(reportError)
 }
 async function poll(active: PhoneHelperSource) {
@@ -107,20 +77,24 @@ async function poll(active: PhoneHelperSource) {
     const snapshot = await active.readSnapshot(controller.signal)
     if (source === active) {
       helperReached = true
+      keyRejected = false
       render(snapshot)
     }
   } catch (error) {
     if (source === active) {
       helperReached = false
+      const unavailable =
+        error instanceof TypeError ||
+        (error instanceof Error && error.name === 'AbortError')
+      if (error instanceof HelperAuthenticationError) keyRejected = true
       render({
         mode: 'live',
-        connection: 'error',
-        detail:
-          error instanceof Error &&
-          !(error instanceof TypeError) &&
-          error.name !== 'AbortError'
+        connection: unavailable ? 'disconnected' : 'error',
+        detail: unavailable
+          ? 'Open MeshCore G2 Helper on your phone.'
+          : error instanceof Error
             ? error.message
-            : 'Open MeshCore G2 Helper, then reconnect. More help is in Connection details.',
+            : 'Check MeshCore G2 Helper on your phone.',
       })
     }
   } finally {
@@ -136,19 +110,16 @@ function connect(key: string) {
   stopPolling()
   source = next
   selectedKey = normalizeHelperKey(key)
+  keyRejected = false
   keyInput.value = ''
-  render({
-    mode: 'live',
-    connection: 'connecting',
-    detail: 'Connecting to the helper on this phone…',
-  })
+  render({ mode: 'live', connection: 'connecting' })
   void poll(next)
 }
 async function rememberSelection() {
   if (!savedLink) {
     pendingSave = true
     linkStatus.textContent =
-      'Link is active for this session. Open in the Even App to remember it.'
+      'Open in the Even App to save this link for next time.'
     return
   }
   pendingSave = false
@@ -156,10 +127,8 @@ async function rememberSelection() {
   const saved = await savedLink.save(key)
   if (disposed || key !== selectedKey) return
   linkStatus.textContent = saved
-    ? key
-      ? 'Helper link saved. It reconnects automatically when you open this app.'
-      : 'Helper forgotten. Paste a connection key to link again.'
-    : 'The Even App could not save this change. Your previous link may return when you reopen the app.'
+    ? ''
+    : 'Could not save this change. Your previous link may return when you reopen the app.'
 }
 form.addEventListener('submit', (event) => {
   event.preventDefault()
@@ -167,115 +136,49 @@ form.addEventListener('submit', (event) => {
     const key = normalizeHelperKey(keyInput.value)
     selectionRevision++
     connect(key)
-    linkStatus.textContent = 'Remembering this helper…'
+    linkStatus.textContent = ''
     void rememberSelection()
   } catch (error) {
-    render({
-      mode: 'live',
-      connection: 'error',
-      detail:
-        error instanceof Error ? error.message : 'Unable to link the helper.',
-    })
+    linkStatus.textContent =
+      error instanceof Error ? error.message : 'Unable to link the helper.'
   }
 })
-document.querySelector('#reconnect')!.addEventListener('click', () => {
-  selectionRevision++
-  if (selectedKey) connect(selectedKey)
-})
-document.querySelector('#forget-helper')!.addEventListener('click', () => {
+forgetButton.addEventListener('click', () => {
   selectionRevision++
   stopPolling()
   selectedKey = undefined
-  linkStatus.textContent = 'Forgetting this helper…'
+  keyRejected = false
+  keyInput.value = ''
+  linkStatus.textContent = ''
   void rememberSelection()
-  render({
-    mode: 'live',
-    connection: 'disconnected',
-    detail: 'Link a phone helper to connect.',
-  })
+  render({ mode: 'live', connection: 'disconnected' })
+  keyInput.focus()
 })
-document.querySelector('#demo')!.addEventListener('click', () => {
-  selectionRevision++
-  stopPolling()
-  void mockMeshCoreSource.readSnapshot().then(render)
-})
-window.addEventListener('securitypolicyviolation', (event) => {
-  if (event.blockedURI.startsWith('http://127.0.0.1:8765'))
-    blockedPolicy = event.effectiveDirective
-})
-document.querySelector('#check-connection')!.addEventListener('click', () => {
-  void checkConnection()
-})
-async function checkConnection() {
-  const button = document.querySelector<HTMLButtonElement>('#check-connection')!
-  button.disabled = true
-  blockedPolicy = ''
-  connectionCheck.textContent = 'Checking access to the helper…'
-  const controller = new AbortController()
-  const deadline = setTimeout(() => controller.abort(), 4000)
-  try {
-    const response = await fetch(PHONE_HELPER_HEALTH_URL, {
-      cache: 'no-store',
-      credentials: 'omit',
-      redirect: 'error',
-      signal: controller.signal,
-    })
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    const text = await response.text()
-    if (!text.startsWith('MeshCore phone helper is reachable.'))
-      throw new Error('Unexpected health response')
-    if (selectedKey) {
-      await new PhoneHelperSource(selectedKey).readSnapshot(controller.signal)
-      connectionCheck.textContent =
-        'Helper reachable. Your connection key is accepted and radio status can be read.'
-    } else {
-      connectionCheck.textContent =
-        'Helper reachable. Paste its connection key above to link it.'
-    }
-  } catch (error) {
-    connectionCheck.textContent = blockedPolicy
-      ? `The host blocked the helper through its ${blockedPolicy} policy. Changing the key will not fix this.`
-      : error instanceof Error &&
-          !(error instanceof TypeError) &&
-          error.name !== 'AbortError'
-        ? error.message
-        : 'Connection check failed. Keep the helper running and check its Connection details for received requests.'
-  } finally {
-    clearTimeout(deadline)
-    button.disabled = false
-  }
-}
 function reportError(error: unknown) {
   console.error('MeshCore G2:', error)
-  hudStatus.textContent =
-    'Unable to display or close the HUD. Reopen the app to retry.'
-  document.querySelector('#glasses-state')!.textContent = 'Unavailable'
+  hudStatus.textContent = 'Glasses unavailable. Reopen the app to retry.'
 }
 async function restoreLink(store: HelperLinkStore, revision: number) {
   try {
     const key = await store.load()
-    // A manual link, demo selection, or forget action takes precedence over a late restore.
+    // A manual link or forget action takes precedence over a late restore.
     if (disposed || revision !== selectionRevision) return
-    if (key) {
-      connect(key)
-      linkStatus.textContent = 'Using your saved helper link.'
-    }
+    if (key) connect(key)
   } catch {
     if (!disposed && revision === selectionRevision)
       linkStatus.textContent =
-        'Could not restore the helper link. Paste its connection key to link again.'
+        'Could not restore your link. Paste the helper key again.'
   }
 }
 async function main() {
   const bridge = await waitForEvenAppBridge()
   if (disposed) return
   savedLink = new HelperLinkStore(bridge)
-  if (selectionRevision === 0) void restoreLink(savedLink, selectionRevision)
-  else if (pendingSave) void rememberSelection()
+  if (selectionRevision === 0) await restoreLink(savedLink, selectionRevision)
+  else if (pendingSave) await rememberSelection()
   hud = await startHud(bridge, current, reportError, stopPolling)
   await hud.update(current)
-  hudStatus.textContent = 'Glasses HUD ready. Double-tap the glasses to exit.'
-  document.querySelector('#glasses-state')!.textContent = 'Ready'
+  hudStatus.textContent = 'Glasses ready'
   console.info('MeshCore G2 ready')
 }
 function dispose() {
