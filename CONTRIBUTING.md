@@ -82,5 +82,8 @@ pairing and the complete glasses connection. See the
 
 Keep the helper running, and stop any other installed helper edition first.
 
-Before opening a PR, run `npm run check:even` or `npm run check:android` for the
-app you changed. Describe simulator and real-hardware results separately.
+Run `npm run check:even` or `npm run check:android` for the app you changed; use
+`npm run check` and `npm run pack` for changes across both apps. With an emulator
+or phone connected, run `./gradlew connectedDebugAndroidTest` from `apps/android`
+to test saved history and chat navigation. These tests do not send radio messages.
+Describe automated, simulator, and real-hardware results separately.

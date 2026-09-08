@@ -49,6 +49,10 @@ All notable changes to this project will be documented here, following
 
 ### Fixed
 
+- Keep the Android header fixed when the keyboard opens, with keyboard spacing
+  applied to the chat and search content.
+- Snap Android chats to the newest message after sending, once the shared
+  history has loaded the outgoing message.
 - Bind the status client's browser fetch to the window. Calling it with the
   source object caused Chromium's “Illegal invocation” before any request,
   even when the health check succeeded. Connection checks now verify the saved
@@ -64,6 +68,9 @@ All notable changes to this project will be documented here, following
 
 ### Added
 
+- Add Android Channels and DMs with saved chat history, message composition, and
+  send status. Share incoming and outgoing messages with the glasses; direct
+  messages show delivery confirmation when the radio receives an acknowledgement.
 - Add Home and Logs navigation to Android. Logs show the latest 200 received
   radio packets with type, route, signal strength, size, and 24-hour timestamps.
   The live log resets for each radio connection and excludes helper HTTP traffic.

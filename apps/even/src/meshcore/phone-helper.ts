@@ -131,7 +131,7 @@ export class PhoneHelperSource implements MeshCoreSource, InboxSource {
     })
     if (response.status === 401) throw new HelperAuthenticationError()
     if (response.status === 404)
-      throw new Error('Update MeshCore G2 for Android to read messages.')
+      throw new Error('Update MeshCore G2 for Android to read this history.')
     if (!response.ok)
       throw new Error(`Phone helper unavailable (${response.status}).`)
     return response.json()

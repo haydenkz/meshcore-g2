@@ -7,6 +7,8 @@ export interface ReceivedMessage {
   readonly text: string
   readonly sentAt: number
   readonly receivedAt: number
+  readonly direction?: 'in' | 'out'
+  readonly delivery?: string
 }
 
 export interface DirectChat {
@@ -66,6 +68,26 @@ export function parseMessages(value: unknown): InboxPage<ReceivedMessage> {
     const item = object(value)
     if (item.kind !== 'channel' && item.kind !== 'direct')
       throw new Error('Invalid message type.')
+    if (
+      item.direction !== undefined &&
+      item.direction !== 'in' &&
+      item.direction !== 'out'
+    )
+      throw new Error('Invalid message direction.')
+    if (
+      item.delivery !== undefined &&
+      ![
+        'received',
+        'queued',
+        'sending',
+        'sent',
+        'awaiting_ack',
+        'delivered',
+        'failed',
+        'unconfirmed',
+      ].includes(String(item.delivery))
+    )
+      throw new Error('Invalid delivery status.')
     return {
       id: number(item.id),
       kind: item.kind,
@@ -75,9 +97,13 @@ export function parseMessages(value: unknown): InboxPage<ReceivedMessage> {
       text: text(item.text, 1024),
       sentAt: number(item.sentAt),
       receivedAt: number(item.receivedAt),
+      direction: item.direction === 'out' ? 'out' : 'in',
+      delivery:
+        item.delivery === undefined ? 'received' : text(item.delivery, 24),
     }
   })
 }
+
 export function parseChats(value: unknown): InboxPage<DirectChat> {
   return page(value, (value) => {
     const item = object(value)

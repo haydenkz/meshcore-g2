@@ -13,8 +13,8 @@
 </p>
 
 The Android helper connects to a MeshCore companion over Bluetooth. The Even Hub
-plugin reads the helper on the same phone and displays channel messages and direct
-message chats on the glasses. Received messages are saved by the helper.
+plugin reads the helper on the same phone. Read and send channel messages and DMs
+on Android, with the same saved history available on the glasses.
 
 ## Setup
 

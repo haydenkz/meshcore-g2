@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -22,6 +24,10 @@ public final class HelperService extends Service {
     private StatusServer server;
     private MessageStore messages;
     private String radioId;
+    private long lastSentAt;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private record PendingAck(long messageId, Runnable expiry) {}
+    private final Map<Long, PendingAck> pendingAcks = new LinkedHashMap<>();
     private Long packetsSent;
     private Long packetsReceived;
     private final RadioLogs logs = new RadioLogs();
@@ -48,6 +54,8 @@ public final class HelperService extends Service {
     @Override public void onCreate() {
         super.onCreate();
         messages = new MessageStore(this);
+        messages.interruptOutgoing();
+        lastSentAt = messages.lastOutgoingAt();
         startHelper();
     }
     private void startHelper() {
@@ -60,6 +68,12 @@ public final class HelperService extends Service {
             @Override public void message(ReceivedMessage message) { messages.add(radioId, message); }
             @Override public void channel(int index, String name) { messages.name(radioId, "channel", Integer.toString(index), name); }
             @Override public void contact(String prefix, String name) { messages.name(radioId, "direct", prefix, name); }
+            @Override public void contactInfo(ContactInfo info) { messages.contact(radioId, info); }
+            @Override public void outgoing(long id, String state, Long ack, long timeoutMs) { trackOutgoing(id, state, ack, timeoutMs); }
+            @Override public void confirmed(long ack) {
+                PendingAck pending = pendingAcks.remove(ack);
+                if (pending != null) { handler.removeCallbacks(pending.expiry()); messages.delivery(pending.messageId(), "delivered"); }
+            }
             @Override public void radioLog(RadioLog entry) { radioLogs.setValue(logs.add(entry)); }
             @Override public void packets(Long sent, Long received) {
                 packetsSent = sent; packetsReceived = received;
@@ -96,9 +110,48 @@ public final class HelperService extends Service {
         companion.connect(device);
     }
     public void disconnect() { companion.disconnect(); }
+    public String radioId() { return radioId; }
+    public int messageLimit(String kind) { return companion == null ? 0 : companion.messageLimit(kind); }
+    public void sendMessage(String kind, String conversation, String text) {
+        HelperSnapshot current = snapshot.getValue();
+        if (!available || current == null || !current.state().equals("connected")) throw new IllegalStateException("Connect a radio to send messages.");
+        String[] pieces = conversation.split(":", 2);
+        if (pieces.length != 2 || !pieces[0].equals(radioId)) throw new IllegalArgumentException("Connect the radio for this conversation.");
+        long sentAt = Math.max(System.currentTimeMillis() / 1000 * 1000, lastSentAt + 1000);
+        OutgoingMessage draft = new OutgoingMessage(0, kind, pieces[1], text.strip(), sentAt);
+        draft.encode(messageLimit(kind)); // Validate before adding anything to the outbox.
+        long id = messages.outgoing(radioId, kind, draft.peer(), draft.text(), sentAt);
+        lastSentAt = sentAt;
+        if (!companion.sendMessage(new OutgoingMessage(id, kind, draft.peer(), draft.text(), sentAt))) {
+            messages.delivery(id, "failed");
+            throw new IllegalStateException("The radio is busy. Try sending again in a moment.");
+        }
+    }
+    private void trackOutgoing(long id, String state, Long ack, long timeoutMs) {
+        messages.delivery(id, state);
+        if (!state.equals("awaiting_ack") || ack == null) return;
+        PendingAck previous = pendingAcks.remove(ack);
+        if (previous != null) { handler.removeCallbacks(previous.expiry()); messages.delivery(previous.messageId(), "unconfirmed"); }
+        if (pendingAcks.size() >= 64) {
+            Long oldest = pendingAcks.keySet().iterator().next();
+            PendingAck removed = pendingAcks.remove(oldest);
+            handler.removeCallbacks(removed.expiry()); messages.delivery(removed.messageId(), "unconfirmed");
+        }
+        Runnable expiry = () -> {
+            PendingAck pending = pendingAcks.get(ack);
+            if (pending != null && pending.messageId() == id) { pendingAcks.remove(ack); messages.delivery(id, "unconfirmed"); }
+        };
+        pendingAcks.put(ack, new PendingAck(id, expiry));
+        handler.postDelayed(expiry, Math.max(1000, Math.min(600000, timeoutMs)));
+    }
+    private void interruptOutgoing() {
+        for (PendingAck pending : pendingAcks.values()) handler.removeCallbacks(pending.expiry());
+        pendingAcks.clear();
+        if (messages != null) messages.interruptOutgoing();
+    }
     public long lastHudReadAt() { return server == null ? 0 : server.lastHudReadAt(); }
     private void update(String state, String message, String name, Integer version, Integer battery) {
-        if (!state.equals("connected")) { packetsSent = null; packetsReceived = null; }
+        if (!state.equals("connected")) { packetsSent = null; packetsReceived = null; interruptOutgoing(); }
         detail = message + (name.isEmpty() ? "" : "\n" + name)
                 + (battery == null ? "" : "\nBattery: " + battery + " mV");
         JSONObject snapshot = new JSONObject();
@@ -116,6 +169,7 @@ public final class HelperService extends Service {
         detail = "Helper stopped. Tap Scan to start it again.";
         available = false;
         if (companion != null) companion.dispose();
+        interruptOutgoing();
         if (server != null) server.stop();
         snapshot.setValue(new HelperSnapshot("disconnected", "Helper stopped. Scan to reconnect.", "", null, null));
         stopForeground(STOP_FOREGROUND_REMOVE);

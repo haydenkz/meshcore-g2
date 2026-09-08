@@ -26,6 +26,7 @@ import io.github.haydenkz.meshcorehelper.ui.MeshCoreTheme
 
 class MainActivity : ComponentActivity() {
     private val model: HelperViewModel by viewModels()
+    private val inboxModel: InboxViewModel by viewModels()
     private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         if (hasBluetoothPermissions()) requestScan()
         else model.showNotice("Allow Nearby devices in app settings to discover your radio.")
@@ -43,6 +44,7 @@ class MainActivity : ComponentActivity() {
         )
         setContent {
             val state by model.state.collectAsStateWithLifecycle()
+            val inbox by inboxModel.state.collectAsStateWithLifecycle()
             MeshCoreTheme {
                 HelperScreen(
                     state = state,
@@ -57,6 +59,15 @@ class MainActivity : ComponentActivity() {
                         Toast.makeText(this, "Paste once into MeshCore G2 in the Even App.", Toast.LENGTH_LONG).show()
                     },
                     onDismissNotice = model::dismissNotice,
+                    inbox = inbox,
+                    onOpenConversation = inboxModel::open,
+                    onCloseConversation = inboxModel::closeConversation,
+                    onOlderMessages = inboxModel::older,
+                    onSendMessage = { conversation, text ->
+                        val error = model.sendMessage(conversation.kind, conversation.id, text)
+                        if (error == null) inboxModel.refreshNow()
+                        error
+                    },
                 )
             }
         }
@@ -88,6 +99,6 @@ class MainActivity : ComponentActivity() {
         }
         model.scan()
     }
-    override fun onStart() { super.onStart(); model.onVisible() }
-    override fun onStop() { model.onHidden(); super.onStop() }
+    override fun onStart() { super.onStart(); model.onVisible(); inboxModel.onVisible() }
+    override fun onStop() { model.onHidden(); inboxModel.onHidden(); super.onStop() }
 }

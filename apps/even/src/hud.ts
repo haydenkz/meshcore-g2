@@ -82,6 +82,22 @@ function time(timestamp: number): string {
   const date = new Date(timestamp)
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
+function deliveryLabel(state?: string): string {
+  switch (state) {
+    case 'queued':
+      return 'Queued'
+    case 'sending':
+      return 'Sending'
+    case 'delivered':
+      return 'Delivered'
+    case 'failed':
+      return 'Not sent'
+    case 'unconfirmed':
+      return 'No confirmation'
+    default:
+      return 'Sent'
+  }
+}
 function wrap(text: string, width: number): string[] {
   const lines: string[] = []
   for (const paragraph of text.split('\n')) {
@@ -166,7 +182,15 @@ export async function startHud(
           : 'Direct message'
       const timestamp = time(currentMessage.sentAt)
       // Reserve the timestamp's width so a long sender name cannot hide it.
-      metadata = `${pxTruncate(`From ${currentMessage.senderName || 'Unknown sender'}`, 520 - getTextWidth(` · ${timestamp}`))} · ${timestamp}`
+      const delivery =
+        currentMessage.direction === 'out'
+          ? ` · ${deliveryLabel(currentMessage.delivery)}`
+          : ''
+      const sender =
+        currentMessage.direction === 'out'
+          ? 'You'
+          : `From ${currentMessage.senderName || 'Unknown sender'}`
+      metadata = `${pxTruncate(sender, 520 - getTextWidth(` · ${timestamp}${delivery}`))} · ${timestamp}${delivery}`
       const lines = wrap(currentMessage.text, 520)
       const pages = Math.max(1, Math.ceil(lines.length / 3))
       messagePage = Math.min(messagePage, pages - 1)
@@ -329,12 +353,25 @@ export async function startHud(
       await render()
       return
     }
-    if (request || message) return
+    if (request) return
     const controller = new AbortController()
     request = controller
     const currentRevision = revision
     const deadline = setTimeout(() => controller.abort(), 4000)
     try {
+      if (message) {
+        const detail = await source.readMessages(
+          message.kind,
+          message.conversationId,
+          message.id + 1,
+          controller.signal,
+        )
+        if (disposed || currentRevision !== revision) return
+        message =
+          detail.items.find((item) => item.id === message?.id) ?? message
+        await render()
+        return
+      }
       const page =
         screen.kind === 'chats'
           ? await source.readChats(before, controller.signal)

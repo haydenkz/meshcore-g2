@@ -79,6 +79,29 @@ test('history requests preserve bound fetch, authentication and read-only cursor
     'http://127.0.0.1:8765/v1/chats?before=6',
   ])
 })
+
+test('sent-message direction and delivery status survive syncing to the glasses', () => {
+  const result = parseMessages({
+    schema: 1,
+    items: [{ ...message, direction: 'out', delivery: 'delivered' }],
+    hasMore: false,
+  })
+  assert.equal(result.items[0]?.direction, 'out')
+  assert.equal(result.items[0]?.delivery, 'delivered')
+  assert.equal(
+    parseMessages({ schema: 1, items: [message], hasMore: false }).items[0]
+      ?.direction,
+    'in',
+  )
+  for (const change of [{ direction: 'unknown' }, { delivery: 'invented' }])
+    assert.throws(() =>
+      parseMessages({
+        schema: 1,
+        items: [{ ...message, ...change }],
+        hasMore: false,
+      }),
+    )
+})
 test('an older helper gives an actionable update message instead of an empty inbox', async () => {
   const source = new PhoneHelperSource(
     'ab'.repeat(32),
