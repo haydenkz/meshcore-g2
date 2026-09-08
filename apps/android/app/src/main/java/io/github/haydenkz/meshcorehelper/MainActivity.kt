@@ -20,6 +20,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import android.provider.Settings
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.haydenkz.meshcorehelper.ui.HelperScreen
 import io.github.haydenkz.meshcorehelper.ui.MeshCoreTheme
@@ -27,6 +31,12 @@ import io.github.haydenkz.meshcorehelper.ui.MeshCoreTheme
 class MainActivity : ComponentActivity() {
     private val model: HelperViewModel by viewModels()
     private val inboxModel: InboxViewModel by viewModels()
+    private var notificationsEnabled by mutableStateOf(false)
+    private val notificationNotice = "Message alerts are off. You can enable them in notification settings."
+    private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+        refreshNotificationStatus()
+        if (!it) model.showNotice(notificationNotice)
+    }
     private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         if (hasBluetoothPermissions()) requestScan()
         else model.showNotice("Allow Nearby devices in app settings to discover your radio.")
@@ -42,9 +52,15 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
+        MessageNotifications.createChannels(this)
+        if (savedInstanceState == null) openNotification(intent)
         setContent {
             val state by model.state.collectAsStateWithLifecycle()
             val inbox by inboxModel.state.collectAsStateWithLifecycle()
+            LifecycleResumeEffect(inbox.conversation?.id, inbox.conversation?.kind) {
+                MessageNotifications.visible(this@MainActivity, inbox.conversation?.kind, inbox.conversation?.id)
+                onPauseOrDispose { MessageNotifications.visible(this@MainActivity, null, null) }
+            }
             MeshCoreTheme {
                 HelperScreen(
                     state = state,
@@ -60,6 +76,8 @@ class MainActivity : ComponentActivity() {
                     },
                     onDismissNotice = model::dismissNotice,
                     inbox = inbox,
+                    notificationsEnabled = notificationsEnabled,
+                    onNotifications = ::notificationSettings,
                     onOpenConversation = inboxModel::open,
                     onCloseConversation = inboxModel::closeConversation,
                     onOlderMessages = inboxModel::older,
@@ -83,7 +101,6 @@ class MainActivity : ComponentActivity() {
             val requested = mutableListOf<String>()
             if (Build.VERSION.SDK_INT >= 31) requested.addAll(listOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT))
             else requested.add(Manifest.permission.ACCESS_FINE_LOCATION)
-            if (Build.VERSION.SDK_INT >= 33) requested.add(Manifest.permission.POST_NOTIFICATIONS)
             permissions.launch(requested.toTypedArray())
             return
         }
@@ -99,6 +116,24 @@ class MainActivity : ComponentActivity() {
         }
         model.scan()
     }
+    private fun notificationSettings() {
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+            (!getPreferences(MODE_PRIVATE).getBoolean("notificationAsked", false) || shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS))) {
+            getPreferences(MODE_PRIVATE).edit().putBoolean("notificationAsked", true).apply()
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+    }
+    private fun openNotification(intent: Intent?) {
+        if (intent?.action == MessageNotifications.OPEN_CHAT) inboxModel.openFromNotification(
+            intent.getStringExtra(MessageNotifications.KIND), intent.getStringExtra(MessageNotifications.CONVERSATION))
+    }
+    // Consume each tap immediately; navigation state owns the open chat after that.
+    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); openNotification(intent) }
+    private fun refreshNotificationStatus() {
+        notificationsEnabled = MessageNotifications.enabled(this)
+        if (notificationsEnabled && model.state.value.notice == notificationNotice) model.dismissNotice()
+    }
+    override fun onResume() { super.onResume(); refreshNotificationStatus() }
     override fun onStart() { super.onStart(); model.onVisible(); inboxModel.onVisible() }
     override fun onStop() { model.onHidden(); inboxModel.onHidden(); super.onStop() }
 }

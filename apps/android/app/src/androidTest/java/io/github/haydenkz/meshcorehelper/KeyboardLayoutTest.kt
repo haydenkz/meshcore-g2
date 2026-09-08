@@ -35,7 +35,7 @@ class KeyboardLayoutTest {
         }
         assertEquals(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE,
             compose.activity.window.attributes.softInputMode and WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST)
-        compose.onNodeWithText("Channels").performClick()
+        compose.onNode(hasText("Channels") and hasClickAction()).performClick()
     }
 
     @Test fun searchKeyboardKeepsTheBrandHeaderFixed() {

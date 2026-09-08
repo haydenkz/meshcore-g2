@@ -7,6 +7,14 @@ All notable changes to this project will be documented here, following
 
 ### Changed
 
+- Make Android chats more compact with flat conversation rows, smaller message
+  bubbles, grouped senders, date dividers, and a jump to the latest messages.
+  Fade between tabs and swipe across tabs or adjacent chats while retaining drafts
+  and search state. Keep chat browsing order stable as new messages arrive.
+- Expand Android radio logs with millisecond timestamps, packet headers, path
+  hashes, transport codes, payload sizes, and selectable raw packet hex. Add packet
+  filters and pause/resume for inspecting the current connection's 200-packet buffer.
+
 - Remove the battery readout and Stop footer from Android Home. The notification
   retains its Stop action.
 - Use the shared logo in the Android header and name both Android editions
@@ -69,6 +77,11 @@ All notable changes to this project will be documented here, following
   been confirmed on Android hardware.
 
 ### Added
+
+- Notify on newly saved channel and direct messages, with separate Android alert
+  settings and a tap opening the matching saved chat. Suppress duplicate deliveries
+  and alerts for the chat currently being read; hide message previews on private
+  lock screens. Enable or manage message notifications from Home.
 
 - Add Android Channels and DMs with saved chat history, message composition, and
   send status. Share incoming and outgoing messages with the glasses; direct

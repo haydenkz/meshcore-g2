@@ -85,5 +85,8 @@ Keep the helper running, and stop any other installed helper edition first.
 Run `npm run check:even` or `npm run check:android` for the app you changed; use
 `npm run check` and `npm run pack` for changes across both apps. With an emulator
 or phone connected, run `./gradlew connectedDebugAndroidTest` from `apps/android`
-to test saved history and chat navigation. These tests do not send radio messages.
+to test saved history and chat navigation. These tests use synthetic messages and do not send radio messages. Notification
+tests require notifications enabled for the development helper; they create and
+remove only their own test alerts and message rows. UI captures are written to the
+app's external `files/screenshots` directory.
 Describe automated, simulator, and real-hardware results separately.

@@ -65,7 +65,12 @@ public final class HelperService extends Service {
         companion = new BleCompanion(this, new BleCompanion.Listener() {
             @Override public void update(String state, String detail, String name, Integer version, Integer battery) { HelperService.this.update(state, detail, name, version, battery); }
             @Override public void radio(String id) { radioId = id; }
-            @Override public void message(ReceivedMessage message) { messages.add(radioId, message); }
+            @Override public void message(ReceivedMessage message) {
+                if (messages.add(radioId, message)) {
+                    MessageNotifications.received(HelperService.this, radioId, message,
+                            messages.conversationName(radioId, message.kind(), message.peer()));
+                }
+            }
             @Override public void channel(int index, String name) { messages.name(radioId, "channel", Integer.toString(index), name); }
             @Override public void contact(String prefix, String name) { messages.name(radioId, "direct", prefix, name); }
             @Override public void contactInfo(ContactInfo info) { messages.contact(radioId, info); }
