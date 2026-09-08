@@ -1,0 +1,45 @@
+:root {
+  font:
+    16px/1.6 system-ui,
+    sans-serif;
+  color: #e6eee7;
+  background: #171d19;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+}
+
+main {
+  max-width: 32rem;
+  padding: 2rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2rem, 8vw, 3rem);
+  letter-spacing: -0.05em;
+}
+
+.eyebrow {
+  color: #a5ecae;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+}
+
+#status {
+  margin-top: 2rem;
+  padding: 1rem;
+  border: 1px solid #46594a;
+  border-radius: 0.5rem;
+}
+
+.note {
+  color: #b4c2b7;
+  font-size: 0.875rem;
+}

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.ehpk
+.env*
+!.env.example
+*.local
+*.log
+.DS_Store
