@@ -1,5 +1,7 @@
 import { waitForEvenAppBridge } from '@evenrealities/even_hub_sdk'
 import { startHud, type HudController } from './hud.ts'
+import { loadHudLogo } from './hud-artwork.ts'
+import { queueBridge } from './bridge-queue.ts'
 import { HelperLinkStore, normalizeHelperKey } from './meshcore/helper-link.ts'
 import {
   PhoneHelperSource,
@@ -21,6 +23,8 @@ let hud: HudController | undefined
 let current: MeshCoreSnapshot = { mode: 'demo', connection: 'disconnected' }
 let source: PhoneHelperSource | undefined
 let timer: ReturnType<typeof setTimeout> | undefined
+let clockTimer: ReturnType<typeof setTimeout> | undefined
+let hudStopped = false
 let request: AbortController | undefined
 let savedLink: HelperLinkStore | undefined
 let selectedKey: string | undefined
@@ -39,6 +43,22 @@ function stopPolling() {
   helperReached = false
   clearTimeout(timer)
   request?.abort()
+}
+function stopHud() {
+  hudStopped = true
+  clearTimeout(clockTimer)
+  stopPolling()
+}
+function scheduleClock() {
+  if (disposed || hudStopped) return
+  // Keep the clock current even without a helper, updating at the next minute.
+  clockTimer = setTimeout(
+    () => {
+      void hud?.update(current).catch(reportError)
+      scheduleClock()
+    },
+    60000 - (Date.now() % 60000),
+  )
 }
 function render(snapshot: MeshCoreSnapshot) {
   current = snapshot
@@ -68,6 +88,7 @@ function render(snapshot: MeshCoreSnapshot) {
   form.hidden = selectedKey !== undefined && !keyRejected
   forgetButton.hidden = selectedKey === undefined
   void hud?.update(snapshot).catch(reportError)
+  void hud?.refreshInbox().catch(reportError)
 }
 async function poll(active: PhoneHelperSource) {
   const controller = new AbortController()
@@ -171,19 +192,25 @@ async function restoreLink(store: HelperLinkStore, revision: number) {
   }
 }
 async function main() {
-  const bridge = await waitForEvenAppBridge()
+  const logo = await loadHudLogo()
+  const bridge = queueBridge(await waitForEvenAppBridge())
   if (disposed) return
   savedLink = new HelperLinkStore(bridge)
   if (selectionRevision === 0) await restoreLink(savedLink, selectionRevision)
   else if (pendingSave) await rememberSelection()
-  hud = await startHud(bridge, current, reportError, stopPolling)
+  hud = await startHud(bridge, current, reportError, stopHud, {
+    logo,
+    inbox: () => source,
+  })
   await hud.update(current)
+  scheduleClock()
+  void hud.refreshInbox().catch(reportError)
   hudStatus.textContent = 'Glasses ready'
   console.info('MeshCore G2 ready')
 }
 function dispose() {
   disposed = true
-  stopPolling()
+  stopHud()
   hud?.dispose()
 }
 window.addEventListener('pagehide', dispose, { once: true })

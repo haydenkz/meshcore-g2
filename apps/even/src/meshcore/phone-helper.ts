@@ -1,5 +1,6 @@
 import type { MeshCoreSnapshot, MeshCoreSource } from './source.ts'
 import { normalizeHelperKey } from './helper-link.ts'
+import { parseChats, parseMessages, type InboxSource } from './inbox.ts'
 
 export const PHONE_HELPER_URL = 'http://127.0.0.1:8765/v1/status'
 const connectingStates = [
@@ -62,7 +63,18 @@ export function parsePhoneSnapshot(value: unknown): MeshCoreSnapshot {
     ...snapshot,
     batteryMillivolts: data.batteryMillivolts,
     protocolVersion: data.protocolVersion,
+    packetsSent: packetCount(data.packetsSent),
+    packetsReceived: packetCount(data.packetsReceived),
   }
+}
+
+function packetCount(value: unknown): number | undefined {
+  return typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= 0 &&
+    value <= 0xffffffff
+    ? value
+    : undefined
 }
 
 export class HelperAuthenticationError extends Error {
@@ -74,7 +86,7 @@ export class HelperAuthenticationError extends Error {
   }
 }
 
-export class PhoneHelperSource implements MeshCoreSource {
+export class PhoneHelperSource implements MeshCoreSource, InboxSource {
   private readonly key: string
   private readonly fetcher: typeof fetch
 
@@ -85,7 +97,32 @@ export class PhoneHelperSource implements MeshCoreSource {
   }
 
   async readSnapshot(signal?: AbortSignal): Promise<MeshCoreSnapshot> {
-    const response = await this.fetcher(PHONE_HELPER_URL, {
+    return parsePhoneSnapshot(await this.readJson(PHONE_HELPER_URL, signal))
+  }
+
+  async readMessages(
+    kind: 'channel' | 'direct',
+    peer?: string,
+    before?: number,
+    signal?: AbortSignal,
+  ) {
+    const query = new URLSearchParams({ kind })
+    if (peer) query.set('peer', peer)
+    if (before !== undefined) query.set('before', String(before))
+    return parseMessages(
+      await this.readJson(`http://127.0.0.1:8765/v1/messages?${query}`, signal),
+    )
+  }
+
+  async readChats(before?: number, signal?: AbortSignal) {
+    const query = before === undefined ? '' : `?before=${before}`
+    return parseChats(
+      await this.readJson(`http://127.0.0.1:8765/v1/chats${query}`, signal),
+    )
+  }
+
+  private async readJson(url: string, signal?: AbortSignal): Promise<unknown> {
+    const response = await this.fetcher(url, {
       headers: { Authorization: `Bearer ${this.key}` },
       cache: 'no-store',
       credentials: 'omit',
@@ -93,8 +130,10 @@ export class PhoneHelperSource implements MeshCoreSource {
       signal,
     })
     if (response.status === 401) throw new HelperAuthenticationError()
+    if (response.status === 404)
+      throw new Error('Update MeshCore G2 Helper to read messages.')
     if (!response.ok)
       throw new Error(`Phone helper unavailable (${response.status}).`)
-    return parsePhoneSnapshot(await response.json())
+    return response.json()
   }
 }

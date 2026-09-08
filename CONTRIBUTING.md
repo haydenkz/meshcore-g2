@@ -20,8 +20,9 @@ Leave the dev server running. In a second terminal, run:
 npm run simulate
 ```
 
-The Even simulator opens the plugin with a demo HUD. No glasses or radio are
-needed. Edit files in `apps/even/src/` and save to reload the app.
+The Even simulator opens the Channels screen. No glasses are needed; live messages
+require the phone helper and a radio. Edit files in `apps/even/src/` and save to
+reload the app.
 
 ### Test on hardware
 

@@ -7,14 +7,20 @@ All notable changes to this project will be documented here, following
 
 ### Changed
 
+- Open Channels by default on the glasses, with a logo, radio TX/RX packet totals,
+  and native menu entries for Channels and Direct messages. Direct chats are
+  ordered by latest activity and open into their message history.
+- Browse one message or chat card per swipe, with separate channel, sender/time,
+  and message areas, dimmed metadata, and a visible position indicator.
+- Show the phone's local time at the right of the glasses header, updating each
+  minute. Use 24-hour time throughout the app, and compact large packet totals
+  to keep room for the clock.
+- Receive channel and direct messages from the radio, save them privately on the
+  phone, and expose authenticated, paginated history for the glasses.
 - Simplify the Even phone page to radio status and helper setup, with a logo
   heading, version footer, and APK download link. Remove connection diagnostics,
   battery voltage, and manual reconnect; saved links retry automatically when the
   helper returns.
-- Receive channel and direct messages from the radio, save them privately on the
-  phone, and expose authenticated, paginated history for the glasses.
-- Read the radio's TX/RX packet totals through the existing BLE command queue.
-
 - Simplify the README and contributor setup for the Even simulator, glasses,
   Android emulator, and physical phones.
 - Use a shared pixelated green MeshCore icon for the Android launcher and Even
