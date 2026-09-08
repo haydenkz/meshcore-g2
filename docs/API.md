@@ -4,8 +4,10 @@ Build a dashboard, archive messages, or integrate MeshCore history into another 
 using the Android helper's local HTTP API. Clients do not need the Even App or G2
 glasses. The helper owns the BLE connection and saves radio history on the phone.
 
-**Base URL:** `http://127.0.0.1:8765`  
-**Contract:** `/v1` endpoints return JSON with `"schema": 1`.  
+**Base URL:** `http://127.0.0.1:8765`
+
+**Contract:** `/v1` endpoints return JSON with `"schema": 1`.
+
 **Machine-readable reference:** [OpenAPI 3.0 document](openapi.json), suitable for
 import into API tools and client generators.
 
