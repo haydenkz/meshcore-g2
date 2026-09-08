@@ -32,9 +32,10 @@ class MainActivity : ComponentActivity() {
     private val model: HelperViewModel by viewModels()
     private val inboxModel: InboxViewModel by viewModels()
     private var notificationsEnabled by mutableStateOf(false)
+    private val notificationNotice = "Message alerts are off. You can enable them in notification settings."
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
-        notificationsEnabled = MessageNotifications.enabled(this)
-        if (!it) model.showNotice("Message alerts are off. You can enable them in notification settings.")
+        refreshNotificationStatus()
+        if (!it) model.showNotice(notificationNotice)
     }
     private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         if (hasBluetoothPermissions()) requestScan()
@@ -128,7 +129,11 @@ class MainActivity : ComponentActivity() {
     }
     // Consume each tap immediately; navigation state owns the open chat after that.
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); openNotification(intent) }
-    override fun onResume() { super.onResume(); notificationsEnabled = MessageNotifications.enabled(this) }
+    private fun refreshNotificationStatus() {
+        notificationsEnabled = MessageNotifications.enabled(this)
+        if (notificationsEnabled && model.state.value.notice == notificationNotice) model.dismissNotice()
+    }
+    override fun onResume() { super.onResume(); refreshNotificationStatus() }
     override fun onStart() { super.onStart(); model.onVisible(); inboxModel.onVisible() }
     override fun onStop() { model.onHidden(); inboxModel.onHidden(); super.onStop() }
 }
