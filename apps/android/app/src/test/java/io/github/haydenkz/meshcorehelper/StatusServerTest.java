@@ -77,4 +77,25 @@ public class StatusServerTest {
             assertFalse(server.diagnostics().contains("wrong-key"));
         } finally { server.stop(); }
     }
+    @Test public void messageHistoryUsesTheSameAuthenticationAndValidatesCursors() throws Exception {
+        java.util.List<String> calls = new java.util.ArrayList<>();
+        StatusServer server = new StatusServer("test-key", () -> "{}", new StatusServer.Inbox() {
+            public String messages(String kind, String peer, long before) { calls.add(kind + ":" + peer + ":" + before); return "{\"schema\":1,\"items\":[],\"hasMore\":false}"; }
+            public String chats(long before) { calls.add("chats:" + before); return "{\"schema\":1,\"items\":[],\"hasMore\":false}"; }
+        });
+        server.start(1000, true);
+        try {
+            assertEquals(401, request("/v1/messages?kind=channel", "GET", null).code());
+            assertEquals(401, request("/v1/chats", "GET", "wrong").code());
+            assertTrue(calls.isEmpty());
+            assertEquals(204, request("/v1/messages", "OPTIONS", null).code());
+            assertEquals(405, request("/v1/messages", "POST", "test-key").code());
+            assertEquals(200, request("/v1/messages?kind=direct&peer=radio%3Aalice&before=4", "GET", "test-key").code());
+            assertEquals(200, request("/v1/chats?before=8", "GET", "test-key").code());
+            assertEquals(java.util.List.of("direct:radio:alice:4", "chats:8"), calls);
+            assertEquals(400, request("/v1/chats?before=0", "GET", "test-key").code());
+            assertEquals(400, request("/v1/chats?before=bad", "GET", "test-key").code());
+            assertEquals(2, calls.size());
+        } finally { server.stop(); }
+    }
 }

@@ -7,6 +7,10 @@ All notable changes to this project will be documented here, following
 
 ### Changed
 
+- Receive channel and direct messages from the radio, save them privately on the
+  phone, and expose authenticated, paginated history for the glasses.
+- Read the radio's TX/RX packet totals through the existing BLE command queue.
+
 - Simplify the README and contributor setup for the Even simulator, glasses,
   Android emulator, and physical phones.
 - Use a shared pixelated green MeshCore icon for the Android launcher and Even

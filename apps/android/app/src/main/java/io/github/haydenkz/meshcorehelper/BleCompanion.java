@@ -13,6 +13,11 @@ import java.util.Arrays;
 public final class BleCompanion {
     public interface Listener {
         void update(String state, String detail, String name, Integer version, Integer battery);
+        default void radio(String id) {}
+        default void message(ReceivedMessage message) {}
+        default void channel(int index, String name) {}
+        default void contact(String prefix, String name) {}
+        default void packets(Long sent, Long received) {}
     }
     private final Context context;
     private final Listener listener;
@@ -21,6 +26,8 @@ public final class BleCompanion {
     private BluetoothGatt gatt;
     private BluetoothGattCharacteristic rx;
     private CompanionProtocol.Handshake handshake;
+    private MessageSync messageSync;
+    private final Runnable syncPoll = () -> { if (messageSync != null) messageSync.poll(); };
     private Runnable timeout;
     private String name = "";
     private boolean pairing;
@@ -145,16 +152,33 @@ public final class BleCompanion {
                 handshake = new CompanionProtocol.Handshake(BleCompanion.this::write,
                         identity -> {
                             disarmTimeout();
+                            String radioId = handshake.radioId();
+                            int channels = handshake.channels();
+                            handshake = null;
+                            listener.radio(radioId);
                             if (!identity.name().isBlank()) name = identity.name();
                             listener.update("connected", "BLE companion connected (MTU " + negotiatedMtu + ").", name, identity.protocolVersion(), identity.batteryMillivolts());
+                            messageSync = new MessageSync(BleCompanion.this::write, new MessageSync.Listener() {
+                                @Override public void message(ReceivedMessage message) { listener.message(message); }
+                                @Override public void channel(int index, String name) { listener.channel(index, name); }
+                                @Override public void contact(String prefix, String name) { listener.contact(prefix, name); }
+                                @Override public void packets(Long sent, Long received) { listener.packets(sent, received); }
+                                @Override public void idle() {
+                                    disarmTimeout();
+                                    handler.removeCallbacks(syncPoll);
+                                    handler.postDelayed(syncPoll, 5000);
+                                }
+                            }, BleCompanion.this::fail, channels, identity.protocolVersion() >= 8);
+                            messageSync.start();
                         }, BleCompanion.this::fail);
                 handshake.start();
             });
         }
         @Override public void onCharacteristicWrite(BluetoothGatt connection, BluetoothGattCharacteristic characteristic, int status) {
             handler.post(() -> {
-                if (connection == gatt && handshake != null && characteristic.getUuid().equals(CompanionProtocol.RX)) {
-                    handshake.onWrite(status == BluetoothGatt.GATT_SUCCESS);
+                if (connection == gatt && characteristic.getUuid().equals(CompanionProtocol.RX)) {
+                    if (handshake != null) handshake.onWrite(status == BluetoothGatt.GATT_SUCCESS);
+                    else if (messageSync != null) messageSync.onWrite(status == BluetoothGatt.GATT_SUCCESS);
                 }
             });
         }
@@ -170,10 +194,24 @@ public final class BleCompanion {
     private void receive(BluetoothGatt connection, BluetoothGattCharacteristic characteristic, byte[] value) {
         if (value == null || !characteristic.getUuid().equals(CompanionProtocol.TX)) return;
         byte[] copy = Arrays.copyOf(value, value.length);
-        handler.post(() -> { if (connection == gatt && handshake != null) handshake.onFrame(copy); });
+        handler.post(() -> {
+            if (connection != gatt) return;
+            try {
+                if (handshake != null) handshake.onFrame(copy);
+                else if (messageSync != null) {
+                    if (copy.length > 0 && (copy[0] == 2 || copy[0] == 3)) armTimeout(10000, "Reading radio contacts timed out. Reconnect and retry.");
+                    messageSync.onFrame(copy);
+                }
+            } catch (IllegalArgumentException error) {
+                fail("The radio returned incomplete message information. Reconnect and retry.");
+            } catch (android.database.sqlite.SQLiteException error) {
+                fail("Could not save incoming messages. Check free phone storage and reconnect.");
+            }
+        });
     }
     private void write(byte[] frame) {
-        armTimeout(10000, "The radio did not complete the MeshCore handshake. Check firmware and retry.");
+        handler.removeCallbacks(syncPoll);
+        armTimeout(10000, messageSync == null ? "The radio did not complete the MeshCore handshake. Check firmware and retry." : "Reading radio messages timed out. Reconnect and retry.");
         boolean started;
         if (Build.VERSION.SDK_INT >= 33) {
             started = gatt.writeCharacteristic(rx, frame, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT) == BluetoothStatusCodes.SUCCESS;
@@ -193,6 +231,9 @@ public final class BleCompanion {
         device = null;
         if (handshake != null) handshake.cancel();
         handshake = null;
+        if (messageSync != null) messageSync.cancel();
+        messageSync = null;
+        handler.removeCallbacks(syncPoll);
         BluetoothGatt previous = gatt;
         gatt = null;
         rx = null;
