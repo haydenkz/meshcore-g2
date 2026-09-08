@@ -9,7 +9,6 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.LocationManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.PersistableBundle
@@ -57,11 +56,6 @@ class MainActivity : ComponentActivity() {
                         getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
                         Toast.makeText(this, "Paste once into MeshCore G2 in the Even App.", Toast.LENGTH_LONG).show()
                     },
-                    onCopyDiagnostics = {
-                        getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("MeshCore G2 diagnostics", model.diagnostics()))
-                        Toast.makeText(this, "Diagnostics copied. No connection key included.", Toast.LENGTH_SHORT).show()
-                    },
-                    onOpenHealth = { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("http://127.0.0.1:8765/health"))) },
                     onStopHelper = model::stopHelper,
                     onDismissNotice = model::dismissNotice,
                 )

@@ -76,8 +76,8 @@ public final class HelperService extends Service {
         PendingIntent stop = PendingIntent.getService(this, 1, new Intent(this, HelperService.class).setAction(STOP), PendingIntent.FLAG_IMMUTABLE);
         Notification notification = new Notification.Builder(this, "ble")
                 .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
-                .setContentTitle("MeshCore G2 Helper")
-                .setContentText("Keeps the radio connection available to the HUD on this phone.")
+                .setContentTitle("MeshCore G2")
+                .setContentText("Radio connection active for your glasses.")
                 .setContentIntent(open).setOngoing(true)
                 .addAction(new Notification.Action.Builder(null, "Stop", stop).build()).build();
         if (Build.VERSION.SDK_INT >= 29) startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);
@@ -87,7 +87,6 @@ public final class HelperService extends Service {
     @Override public IBinder onBind(Intent intent) { return binder; }
     public void connect(BluetoothDevice device) { if (available) companion.connect(device); }
     public void disconnect() { companion.disconnect(); }
-    public String diagnostics() { return server == null ? "Local helper not running." : server.diagnostics(); }
     public long lastHudReadAt() { return server == null ? 0 : server.lastHudReadAt(); }
     private void update(String state, String message, String name, Integer version, Integer battery) {
         if (!state.equals("connected")) { packetsSent = null; packetsReceived = null; }

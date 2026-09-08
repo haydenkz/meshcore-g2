@@ -388,7 +388,7 @@ export async function startHud(
       notice =
         error instanceof TypeError ||
         (error instanceof Error && error.name === 'AbortError')
-          ? 'Open MeshCore G2 Helper to receive messages.'
+          ? 'Open MeshCore G2 for Android to receive messages.'
           : error instanceof Error
             ? error.message
             : 'Unable to load messages.'

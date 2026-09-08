@@ -79,11 +79,11 @@ function render(snapshot: MeshCoreSnapshot) {
       : state === 'connecting'
         ? 'Connecting to your radio through the phone helper…'
         : state === 'error'
-          ? snapshot.detail || 'Check your radio in MeshCore G2 Helper.'
+          ? snapshot.detail || 'Check your radio in MeshCore G2 for Android.'
           : selectedKey
             ? helperReached
-              ? 'Connect your radio in MeshCore G2 Helper.'
-              : 'Open MeshCore G2 Helper. Your link will reconnect automatically.'
+              ? 'Connect your radio in MeshCore G2 for Android.'
+              : 'Open MeshCore G2 for Android. Your link will reconnect automatically.'
             : 'Link your phone helper to get started.'
   form.hidden = selectedKey !== undefined && !keyRejected
   forgetButton.hidden = selectedKey === undefined
@@ -112,10 +112,10 @@ async function poll(active: PhoneHelperSource) {
         mode: 'live',
         connection: unavailable ? 'disconnected' : 'error',
         detail: unavailable
-          ? 'Open MeshCore G2 Helper on your phone.'
+          ? 'Open MeshCore G2 for Android on your phone.'
           : error instanceof Error
             ? error.message
-            : 'Check MeshCore G2 Helper on your phone.',
+            : 'Check MeshCore G2 for Android on your phone.',
       })
     }
   } finally {

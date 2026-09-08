@@ -86,6 +86,6 @@ test('an older helper gives an actionable update message instead of an empty inb
   )
   await assert.rejects(
     source.readMessages('channel'),
-    /Update MeshCore G2 Helper/,
+    /Update MeshCore G2 for Android/,
   )
 })

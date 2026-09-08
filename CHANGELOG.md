@@ -7,6 +7,10 @@ All notable changes to this project will be documented here, following
 
 ### Changed
 
+- Use the shared logo in the Android header and name both Android editions
+  MeshCore G2. Simplify Home by hiding Nearby radios while connected, removing
+  the tagline, redundant linking copy, and connection debugging controls.
+
 - Open Channels by default on the glasses, with a logo, radio TX/RX packet totals,
   and native menu entries for Channels and Direct messages. Direct chats are
   ordered by latest activity and open into their message history.

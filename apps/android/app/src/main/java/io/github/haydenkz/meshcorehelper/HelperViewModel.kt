@@ -28,7 +28,6 @@ data class HelperUiState(
     val scanning: Boolean = false,
     val devices: List<NearbyRadio> = emptyList(),
     val notice: String? = null,
-    val diagnostics: String = "The helper starts when you scan for a radio.",
     val hudLinked: Boolean = false,
 )
 
@@ -61,7 +60,6 @@ class HelperViewModel(application: Application) : AndroidViewModel(application) 
                     val lastRead = service.lastHudReadAt()
                     mutableState.update { it.copy(
                         running = service.available,
-                        diagnostics = service.diagnostics(),
                         hudLinked = service.available && lastRead > 0 && System.currentTimeMillis() - lastRead < 15000,
                     ) }
                     delay(1000)
@@ -174,10 +172,6 @@ class HelperViewModel(application: Application) : AndroidViewModel(application) 
         app.stopService(Intent(app, HelperService::class.java))
         mutableState.update { HelperUiState(notice = "Helper stopped.") }
     }
-    fun diagnostics(): String = "MeshCore G2 Helper ${BuildConfig.VERSION_NAME}\n" +
-        "${Build.MANUFACTURER} ${Build.MODEL}; Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\n" +
-        "${state.value.radio.detail()}\n${state.value.diagnostics}"
-
     private fun releaseBinding() {
         scanOnBind = false
         observation?.cancel()

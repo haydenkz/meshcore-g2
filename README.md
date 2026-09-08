@@ -26,7 +26,7 @@ companion BLE firmware.
 2. Install the Android APK. Install the Even plugin through your Even beta
    invitation or [developer project](https://github.com/haydenkz/meshcore-g2/blob/main/CONTRIBUTING.md#test-on-hardware).
    Upload the `.ehpk` file to Even portal and set it as the beta release.
-3. Open **MeshCore G2 Helper**, grant its permissions, and tap **Find a radio**.
+3. Open **MeshCore G2** on Android, grant its permissions, and tap **Find a radio**.
    Once connected, tap **Copy connection key**. Paste it into **MeshCore G2** in
    the Even App and tap **Link phone helper**.
 
