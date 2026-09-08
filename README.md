@@ -46,6 +46,15 @@ to go back. Recent adverts also appear in Android under **Logs → Recent advert
 TX/RX show the radio's sent and received packet totals; unavailable counts appear
 as dashes.
 
+In the Android app, swipe left or right to change tabs, or swipe across a message
+history to move between chats. Drafts stay with each conversation. In **Logs**, tap
+a packet for its details; use filters and **Pause** to inspect incoming traffic.
+
+On **Home**, enable **Message notifications** to get channel and direct-message
+alerts while the helper is running. Tap an alert to open its chat. Android notification
+settings let you control the two message categories separately. Alerts are quiet for
+the chat you are currently reading; repeated deliveries do not alert again.
+
 ## Development
 
 To run the Even app locally with Node 24:

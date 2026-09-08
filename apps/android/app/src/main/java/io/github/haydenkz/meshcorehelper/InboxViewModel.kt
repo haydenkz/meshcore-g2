@@ -36,6 +36,7 @@ class InboxViewModel(application: Application) : AndroidViewModel(application) {
     private var visible = false
     private var polling: Job? = null
     private var request: Job? = null
+    private var notificationRequest: Job? = null
     private var revision = 0
     private var messageLimit = 32
 
@@ -55,6 +56,22 @@ class InboxViewModel(application: Application) : AndroidViewModel(application) {
         messageLimit = 32
         mutableState.update { it.copy(conversation = conversation, messages = emptyList(), hasOlder = false, loading = true, error = null) }
         refreshNow()
+    }
+    fun openFromNotification(kind: String?, id: String?) {
+        if (!MessageNotifications.validConversation(kind, id)) return
+        notificationRequest?.cancel()
+        notificationRequest = viewModelScope.launch {
+            try {
+                val conversation = withContext(Dispatchers.IO) {
+                    synchronized(store) { conversations(store.conversations(kind!!)).find { it.id == id } }
+                }
+                if (conversation != null) open(conversation)
+            } catch (_: android.database.sqlite.SQLiteException) {
+                mutableState.update { it.copy(error = "Could not open this message. Check free phone storage.") }
+            } catch (_: org.json.JSONException) {
+                mutableState.update { it.copy(error = "Could not open this message from saved history.") }
+            }
+        }
     }
     fun closeConversation() {
         revision++

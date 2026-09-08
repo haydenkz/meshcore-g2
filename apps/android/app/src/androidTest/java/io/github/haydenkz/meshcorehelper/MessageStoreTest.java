@@ -21,6 +21,17 @@ public class MessageStoreTest {
     private MessageStore open() { store = new MessageStore(context, database); return store; }
     @After public void cleanup() { if (store != null) store.close(); context.deleteDatabase(database); }
 
+    @Test public void onlyNewlySavedIncomingMessagesAreEligibleForNotification() {
+        open();
+        ReceivedMessage incoming = new ReceivedMessage("channel", "0", "Alice", "Meet at the trailhead", 1000);
+        assertTrue(store.add(radio, incoming));
+        assertFalse(store.add(radio, incoming));
+        store.close(); open();
+        assertFalse(store.add(radio, incoming));
+        assertTrue(store.add(radio, new ReceivedMessage("channel", "1", "Alice", incoming.text(), incoming.sentAt())));
+        assertTrue(store.add("b".repeat(64), incoming));
+    }
+
     @Test public void migrationPreservesExistingHistoryAndMakesUnnamedChatsVisible() throws Exception {
         try (SQLiteDatabase db = context.openOrCreateDatabase(database, 0, null)) {
             db.execSQL("CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, radio TEXT NOT NULL, kind TEXT NOT NULL, peer TEXT NOT NULL, sender TEXT NOT NULL, text TEXT NOT NULL, sent_at INTEGER NOT NULL, received_at INTEGER NOT NULL, UNIQUE(radio,kind,peer,sender,text,sent_at))");

@@ -44,12 +44,19 @@ public final class MessageStore extends SQLiteOpenHelper implements StatusServer
         values.put("radio", radio); values.put("kind", kind); values.put("peer", peer); values.put("name", name);
         getWritableDatabase().insertWithOnConflict("names", null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
-    public void add(String radio, ReceivedMessage message) {
+    public boolean add(String radio, ReceivedMessage message) {
         ContentValues values = new ContentValues();
         values.put("radio", radio); values.put("kind", message.kind()); values.put("peer", message.peer());
         values.put("sender", message.sender()); values.put("text", message.text()); values.put("sent_at", message.sentAt()); values.put("received_at", System.currentTimeMillis());
-        getWritableDatabase().insertWithOnConflict("messages", null, values, SQLiteDatabase.CONFLICT_IGNORE);
+        long inserted = getWritableDatabase().insertWithOnConflict("messages", null, values, SQLiteDatabase.CONFLICT_IGNORE);
         ensureName(radio, message.kind(), message.peer());
+        return inserted != -1;
+    }
+    public String conversationName(String radio, String kind, String peer) {
+        try (Cursor rows = getReadableDatabase().rawQuery("SELECT name FROM names WHERE radio=? AND kind=? AND peer=?", new String[]{radio, kind, peer})) {
+            if (rows.moveToFirst() && !rows.getString(0).isBlank()) return rows.getString(0);
+        }
+        return kind.equals("channel") ? "Channel " + peer : peer;
     }
     private void ensureName(String radio, String kind, String peer) {
         ContentValues values = new ContentValues();

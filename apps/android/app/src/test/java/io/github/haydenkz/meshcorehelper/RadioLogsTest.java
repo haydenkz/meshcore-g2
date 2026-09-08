@@ -65,7 +65,30 @@ public class RadioLogsTest {
         assertEquals(List.of(packet(206)), logs.add(packet(206)));
     }
 
+    @Test public void decodesMultiBytePathsAndTransportCodesWithoutMistakingPayloadForPath() {
+        RadioLog log = RadioLog.parse(1, 1, new byte[]{(byte) 0x88, 0, -90, 0x14, 0x34, 0x12, 0x78, 0x56, 0x42, 0x11, 0x22, 0x33, 0x44, 0x55});
+        assertEquals(2, log.details().pathCount());
+        assertEquals(2, log.details().hashBytes());
+        assertEquals("1122 → 3344", log.details().path());
+        assertEquals("1234 · 5678", log.details().transportCodes());
+        assertEquals(1, log.details().payloadBytes());
+        assertEquals("", log.details().note());
+        assertEquals("14 34 12 78 56 42 11 22 33 44 55", log.details().rawHex());
+    }
+    @Test public void preservesMalformedPacketsForInspectionWithoutInventingPathMetadata() {
+        for (byte[] raw : new byte[][] { {0x15}, {0x14, 1, 2}, {0x15, 2, 1}, {0x15, (byte) 0xC0}, {0x55, 0, 1}, {0x15, 0x7f} }) {
+            byte[] frame = new byte[raw.length + 3];
+            frame[0] = (byte) 0x88;
+            System.arraycopy(raw, 0, frame, 3, raw.length);
+            RadioLog log = RadioLog.parse(1, 1, frame);
+            assertNotNull(log);
+            assertFalse(log.details().note().isEmpty());
+            assertEquals(-1, log.details().pathCount());
+            assertEquals(-1, log.details().payloadBytes());
+        }
+    }
+
     private static RadioLog packet(long id) {
-        return new RadioLog(id, id * 1000, "Advertisement", "Flood", 32, -100, 2.5f);
+        return RadioLog.parse(id, id * 1000, new byte[]{(byte) 0x88, 10, -100, 0x11, 0, 1});
     }
 }
