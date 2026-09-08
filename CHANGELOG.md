@@ -87,6 +87,10 @@ All notable changes to this project will be documented here, following
 
 ### Added
 
+- Document the Android helper API for independent clients, with an OpenAPI
+  description, authentication and connection setup, endpoint/field references,
+  pagination and polling guidance, errors, and curl, JavaScript, and Python examples.
+
 - Notify on newly saved channel and direct messages, with separate Android alert
   settings and a tap opening the matching saved chat. Suppress duplicate deliveries
   and alerts for the chat currently being read; hide message previews on private

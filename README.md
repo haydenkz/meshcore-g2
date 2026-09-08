@@ -67,6 +67,21 @@ alerts while the helper is running. Tap an alert to open its chat. Android notif
 settings let you control the two message categories separately. Alerts are quiet for
 the chat you are currently reading; repeated deliveries do not alert again.
 
+## Use the API
+
+Build your own dashboard, message archive, or app using the Android helper's
+read-only local API. Even software and glasses are not required for API clients.
+Install the Android APK from the CI artifacts linked in Setup, open the helper,
+grant its permissions, and tap **Find a radio** to start it. Connect your companion
+for live data and use **Copy connection key** to authorize your client. Keep the
+helper service running to read saved history too.
+
+See the [API reference](docs/API.md) for endpoints, authentication, curl,
+JavaScript and Python examples, pagination, polling, and computer access through
+adb. An [OpenAPI document](docs/openapi.json) is included for API tools and client
+generators. The server is accessible on the phone's loopback interface, not its
+Wi-Fi address.
+
 ## Development
 
 To run the Even app locally with Node 24:

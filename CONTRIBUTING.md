@@ -92,3 +92,15 @@ tests require notifications enabled for the development helper; they create and
 remove only their own test alerts and message rows. UI captures are written to the
 app's external `files/screenshots` directory.
 Describe automated, simulator, and real-hardware results separately.
+
+## API contract
+
+The [API reference](docs/API.md) and [OpenAPI document](docs/openapi.json) describe
+the Android helper's public HTTP contract for independent clients. Keep both in
+sync with `StatusServer`, `MessageStore`, and status fields from `HelperService`.
+Android UI queries are not HTTP endpoints unless the server exposes them.
+
+When changing the contract, update response examples, parameter and pagination
+rules, authentication/error behavior, and the existing HTTP/history tests as
+appropriate. Keep API version/schema changes distinct from product release
+versions. Use synthetic identifiers and placeholder credentials in documentation.
