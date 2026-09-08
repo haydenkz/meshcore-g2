@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { parseChats, parseMessages } from './inbox.ts'
+import { parseAdverts, parseChats, parseMessages } from './inbox.ts'
 import { PhoneHelperSource } from './phone-helper.ts'
 
 const message = {
@@ -73,11 +73,42 @@ test('history requests preserve bound fetch, authentication and read-only cursor
   await source.readMessages('channel')
   await source.readMessages('direct', 'radio:alice', 4)
   await source.readChats(6)
+  await source.readAdverts(18)
   assert.deepEqual(urls, [
     'http://127.0.0.1:8765/v1/messages?kind=channel',
     'http://127.0.0.1:8765/v1/messages?kind=direct&peer=radio%3Aalice&before=4',
     'http://127.0.0.1:8765/v1/chats?before=6',
+    'http://127.0.0.1:8765/v1/adverts?before=18',
   ])
+})
+
+test('adverts validate the shared history shape and sanitize untrusted radio names', () => {
+  const advert = {
+    id: 9,
+    name: 'Hill\nrepeater',
+    publicKeyPrefix: '112233445566',
+    nodeType: 'Repeater',
+    receivedAt: 1700000000000,
+  }
+  const result = parseAdverts({ schema: 1, items: [advert], hasMore: true })
+  assert.equal(result.items[0]?.name, 'Hill repeater')
+  assert.equal(result.hasMore, true)
+  for (const change of [
+    { publicKeyPrefix: 'bad' },
+    { receivedAt: -1 },
+    { id: '9' },
+    { name: 'x'.repeat(81) },
+  ])
+    assert.throws(() =>
+      parseAdverts({
+        schema: 1,
+        items: [{ ...advert, ...change }],
+        hasMore: false,
+      }),
+    )
+  assert.throws(() =>
+    parseAdverts({ schema: 1, items: Array(17).fill(advert), hasMore: false }),
+  )
 })
 
 test('sent-message direction and delivery status survive syncing to the glasses', () => {

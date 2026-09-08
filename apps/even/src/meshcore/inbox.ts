@@ -11,6 +11,14 @@ export interface ReceivedMessage {
   readonly delivery?: string
 }
 
+export interface RecentAdvert {
+  readonly id: number
+  readonly name: string
+  readonly publicKeyPrefix: string
+  readonly nodeType: string
+  readonly receivedAt: number
+}
+
 export interface DirectChat {
   readonly id: string
   readonly name: string
@@ -35,6 +43,10 @@ export interface InboxSource {
     before?: number,
     signal?: AbortSignal,
   ): Promise<InboxPage<DirectChat>>
+  readAdverts?(
+    before?: number,
+    signal?: AbortSignal,
+  ): Promise<InboxPage<RecentAdvert>>
 }
 
 function object(value: unknown): Record<string, unknown> {
@@ -104,6 +116,21 @@ export function parseMessages(value: unknown): InboxPage<ReceivedMessage> {
   })
 }
 
+export function parseAdverts(value: unknown): InboxPage<RecentAdvert> {
+  return page(value, (value) => {
+    const item = object(value)
+    const prefix = text(item.publicKeyPrefix, 12)
+    if (!/^[a-f0-9]{12}$/.test(prefix))
+      throw new Error('Invalid advert identity.')
+    return {
+      id: number(item.id),
+      name: text(item.name, 80),
+      publicKeyPrefix: prefix,
+      nodeType: text(item.nodeType, 32),
+      receivedAt: number(item.receivedAt),
+    }
+  })
+}
 export function parseChats(value: unknown): InboxPage<DirectChat> {
   return page(value, (value) => {
     const item = object(value)

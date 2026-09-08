@@ -69,6 +69,7 @@ public final class HelperService extends Service {
             @Override public void channel(int index, String name) { messages.name(radioId, "channel", Integer.toString(index), name); }
             @Override public void contact(String prefix, String name) { messages.name(radioId, "direct", prefix, name); }
             @Override public void contactInfo(ContactInfo info) { messages.contact(radioId, info); }
+            @Override public void advert(ContactInfo info) { messages.advert(radioId, info, System.currentTimeMillis()); }
             @Override public void outgoing(long id, String state, Long ack, long timeoutMs) { trackOutgoing(id, state, ack, timeoutMs); }
             @Override public void confirmed(long ack) {
                 PendingAck pending = pendingAcks.remove(ack);

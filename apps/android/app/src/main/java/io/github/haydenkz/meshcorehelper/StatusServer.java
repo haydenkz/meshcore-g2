@@ -13,6 +13,7 @@ public final class StatusServer extends NanoHTTPD {
     public interface Inbox {
         String messages(String kind, String conversation, long before);
         String chats(long before);
+        default String adverts(long before) { return "{\"schema\":1,\"items\":[],\"hasMore\":false}"; }
     }
     public static final int PORT = 8765;
     private final byte[] authorization;
@@ -51,7 +52,7 @@ public final class StatusServer extends NanoHTTPD {
         } else if (session.getUri().equals("/health") && session.getMethod() == Method.GET) {
             healthChecks.incrementAndGet();
             response = newFixedLengthResponse(Response.Status.OK, "text/plain", "MeshCore phone helper is reachable. Return to the Even App and link it with your HUD key.");
-        } else if (!session.getUri().equals("/v1/status") && !(inbox != null && (session.getUri().equals("/v1/messages") || session.getUri().equals("/v1/chats")))) {
+        } else if (!session.getUri().equals("/v1/status") && !(inbox != null && (session.getUri().equals("/v1/messages") || session.getUri().equals("/v1/chats") || session.getUri().equals("/v1/adverts")))) {
             response = newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "Not found");
         } else if (session.getMethod() == Method.OPTIONS) {
             response = newFixedLengthResponse(Response.Status.NO_CONTENT, "text/plain", "");
@@ -69,7 +70,11 @@ public final class StatusServer extends NanoHTTPD {
                     String cursor = session.getParms().get("before");
                     long before = cursor == null ? Long.MAX_VALUE : Long.parseLong(cursor);
                     if (before < 1) throw new IllegalArgumentException("Invalid cursor");
-                    body = session.getUri().equals("/v1/chats") ? inbox.chats(before) : inbox.messages(session.getParms().getOrDefault("kind", "channel"), session.getParms().get("peer"), before);
+                    body = switch (session.getUri()) {
+                        case "/v1/chats" -> inbox.chats(before);
+                        case "/v1/adverts" -> inbox.adverts(before);
+                        default -> inbox.messages(session.getParms().getOrDefault("kind", "channel"), session.getParms().get("peer"), before);
+                    };
                 }
                 response = newFixedLengthResponse(Response.Status.OK, "application/json", body);
             } catch (IllegalArgumentException error) {

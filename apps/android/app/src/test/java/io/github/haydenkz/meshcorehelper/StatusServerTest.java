@@ -82,11 +82,13 @@ public class StatusServerTest {
         StatusServer server = new StatusServer("test-key", () -> "{}", new StatusServer.Inbox() {
             public String messages(String kind, String peer, long before) { calls.add(kind + ":" + peer + ":" + before); return "{\"schema\":1,\"items\":[],\"hasMore\":false}"; }
             public String chats(long before) { calls.add("chats:" + before); return "{\"schema\":1,\"items\":[],\"hasMore\":false}"; }
+            public String adverts(long before) { calls.add("adverts:" + before); return "{\"schema\":1,\"items\":[],\"hasMore\":false}"; }
         });
         server.start(1000, true);
         try {
             assertEquals(401, request("/v1/messages?kind=channel", "GET", null).code());
             assertEquals(401, request("/v1/chats", "GET", "wrong").code());
+            assertEquals(401, request("/v1/adverts", "GET", null).code());
             assertTrue(calls.isEmpty());
             assertEquals(204, request("/v1/messages", "OPTIONS", null).code());
             assertEquals(405, request("/v1/messages", "POST", "test-key").code());
@@ -96,6 +98,11 @@ public class StatusServerTest {
             assertEquals(400, request("/v1/chats?before=0", "GET", "test-key").code());
             assertEquals(400, request("/v1/chats?before=bad", "GET", "test-key").code());
             assertEquals(2, calls.size());
+            assertEquals(204, request("/v1/adverts", "OPTIONS", null).code());
+            assertEquals(405, request("/v1/adverts", "POST", "test-key").code());
+            assertEquals(400, request("/v1/adverts?before=bad", "GET", "test-key").code());
+            assertEquals(200, request("/v1/adverts?before=18", "GET", "test-key").code());
+            assertEquals("adverts:18", calls.get(2));
         } finally { server.stop(); }
     }
 }

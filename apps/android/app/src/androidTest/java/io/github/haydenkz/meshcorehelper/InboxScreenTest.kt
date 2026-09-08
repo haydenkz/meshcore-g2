@@ -20,7 +20,9 @@ class InboxScreenTest {
     private val alice = Conversation("$radio:112233445566", "direct", "Alice", "See you there", 1788891960000)
     private val helper = mutableStateOf(HelperUiState(radio = HelperSnapshot("connected", "", "Trail companion", 8, 3840), running = true,
         radioId = radio, channelMessageLimit = 140, directMessageLimit = 159))
-    private val inbox = mutableStateOf(InboxUiState(channels = listOf(publicChannel), chats = listOf(alice), loading = false))
+    private val inbox = mutableStateOf(InboxUiState(channels = listOf(publicChannel), chats = listOf(alice), adverts = listOf(
+        RecentAdvert(1, "Hill repeater", "112233445566", "Repeater", 1788891960000),
+    ), loading = false))
     private val sends = mutableListOf<Pair<Conversation, String>>()
     private fun screen(sendError: String? = null) {
         compose.setContent {
@@ -70,6 +72,17 @@ class InboxScreenTest {
         compose.onNodeWithText("Radio is busy").assertIsDisplayed()
         compose.runOnIdle { helper.value = helper.value.copy(radioId = "b".repeat(64)) }
         compose.onNodeWithText("Send").assertIsNotEnabled()
+    }
+    @Test fun logsShowsTheSameNamedAdvertsAsTheSharedHistory() {
+        screen()
+        compose.onNodeWithText("Logs").performClick()
+        compose.onNodeWithText("Recent adverts").performClick()
+        compose.onNodeWithText("Hill repeater").assertIsDisplayed()
+        compose.onNodeWithText("112233445566").assertIsDisplayed()
+        screenshot("adverts")
+        compose.onNodeWithText("Packets").performClick()
+        compose.onNodeWithText("Hill repeater").assertDoesNotExist()
+        compose.onNodeWithText("Waiting for radio packets…").assertIsDisplayed()
     }
     @Test fun sendingFromOlderHistorySnapsToTheNewMessageAfterHistoryRefreshes() {
         screen()

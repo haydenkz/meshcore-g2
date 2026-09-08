@@ -17,6 +17,7 @@ import type {
   DirectChat,
   InboxSource,
   ReceivedMessage,
+  RecentAdvert,
 } from './meshcore/inbox.ts'
 
 type HudBridge = Pick<
@@ -30,11 +31,13 @@ type HudBridge = Pick<
 type Screen =
   | { kind: 'channel' }
   | { kind: 'chats' }
+  | { kind: 'adverts' }
   | { kind: 'direct'; peer: string; name: string }
 type Entry = {
   title?: string
   message?: ReceivedMessage
   chat?: DirectChat
+  advert?: RecentAdvert
   page?: 'older' | 'newer'
 }
 export interface HudOptions {
@@ -163,7 +166,9 @@ export async function startHud(
         ? 'Channels'
         : screen.kind === 'chats'
           ? 'Direct messages'
-          : screen.name
+          : screen.kind === 'adverts'
+            ? 'Recent adverts'
+            : screen.name
     selected = Math.min(selected, Math.max(0, entries.length - 1))
     const entry = entries[selected]
     const currentMessage = message ?? entry?.message
@@ -215,13 +220,19 @@ export async function startHud(
         lines[2] = pxTruncate(`${lines[2]}…`, 520)
       body = lines.join('\n')
       hint = 'Swipe: next / previous · Tap: open chat'
+    } else if (entry?.advert) {
+      conversation = `Node: ${entry.advert.name}`
+      metadata = `${entry.advert.nodeType} · ${time(entry.advert.receivedAt)}`
+      body = `ID ${entry.advert.publicKeyPrefix}`
+      hint = 'Swipe: next / previous'
     } else if (entry?.page) {
       conversation = entry.title ?? 'Message history'
-      metadata = 'Message history'
+      metadata =
+        screen.kind === 'adverts' ? 'Advert history' : 'Message history'
       body =
         entry.page === 'older'
-          ? 'Continue to earlier messages.'
-          : 'Return to more recent messages.'
+          ? `Continue to earlier ${screen.kind === 'adverts' ? 'adverts' : 'messages'}.`
+          : `Return to more recent ${screen.kind === 'adverts' ? 'adverts' : 'messages'}.`
       hint = 'Tap to load · Swipe to go back'
     }
     if (entry && !message) position = `${selected + 1}/${entries.length}`
@@ -296,6 +307,7 @@ export async function startHud(
         menuItems: [
           new MenuItemProperty({ itemID: 1, itemName: 'Channels' }),
           new MenuItemProperty({ itemID: 2, itemName: 'Direct messages' }),
+          new MenuItemProperty({ itemID: 3, itemName: 'Recent adverts' }),
         ],
       }),
     }),
@@ -349,7 +361,7 @@ export async function startHud(
       message = undefined
     }
     if (!source) {
-      notice = 'Link your phone helper to read messages.'
+      notice = 'Link your phone helper to read radio history.'
       await render()
       return
     }
@@ -375,16 +387,26 @@ export async function startHud(
       const page =
         screen.kind === 'chats'
           ? await source.readChats(before, controller.signal)
-          : await source.readMessages(
-              screen.kind,
-              screen.kind === 'direct' ? screen.peer : undefined,
-              before,
-              controller.signal,
-            )
+          : screen.kind === 'adverts'
+            ? await (source.readAdverts
+                ? source.readAdverts(before, controller.signal)
+                : Promise.reject(
+                    new Error('Update the phone helper to read adverts.'),
+                  ))
+            : await source.readMessages(
+                screen.kind,
+                screen.kind === 'direct' ? screen.peer : undefined,
+                before,
+                controller.signal,
+              )
       if (disposed || currentRevision !== revision) return
       const previous = entries[selected]
       const next: Entry[] = page.items.map((item) =>
-        'lastMessageId' in item ? { chat: item } : { message: item },
+        'nodeType' in item
+          ? { advert: item }
+          : 'lastMessageId' in item
+            ? { chat: item }
+            : { message: item },
       )
       const final = page.items.at(-1)
       oldest = final
@@ -394,12 +416,12 @@ export async function startHud(
         : undefined
       if (cursors.length)
         next.unshift({
-          title: 'Newer messages',
+          title: screen.kind === 'adverts' ? 'Newer adverts' : 'Newer messages',
           page: 'newer',
         })
       if (page.hasMore)
         next.push({
-          title: 'Older messages',
+          title: screen.kind === 'adverts' ? 'Older adverts' : 'Older messages',
           page: 'older',
         })
       if (previous) {
@@ -408,7 +430,9 @@ export async function startHud(
             ? item.message?.id === previous.message.id
             : previous.chat
               ? item.chat?.id === previous.chat.id
-              : item.page === previous.page,
+              : previous.advert
+                ? item.advert?.id === previous.advert.id
+                : item.page === previous.page,
         )
         if (index >= 0) selected = index
       }
@@ -418,7 +442,9 @@ export async function startHud(
           ? 'No channel messages yet.'
           : screen.kind === 'chats'
             ? 'No direct message chats yet.'
-            : 'No messages in this chat yet.'
+            : screen.kind === 'adverts'
+              ? 'No adverts received yet.'
+              : 'No messages in this chat yet.'
       await render()
     } catch (error) {
       if (disposed || currentRevision !== revision) return
@@ -443,7 +469,8 @@ export async function startHud(
     cursors = []
     selected = 0
     message = undefined
-    notice = 'Loading messages…'
+    notice =
+      screen.kind === 'adverts' ? 'Loading adverts…' : 'Loading messages…'
     void render().catch(reportError)
     void refreshInbox().catch(reportError)
   }
@@ -469,7 +496,8 @@ export async function startHud(
       } else before = cursors.pop()
       selected = 0
       entries = []
-      notice = 'Loading messages…'
+      notice =
+        screen.kind === 'adverts' ? 'Loading adverts…' : 'Loading messages…'
       void render().catch(reportError)
       void refreshInbox().catch(reportError)
     }
@@ -491,6 +519,7 @@ export async function startHud(
     if (event.menuItemClickEvent) {
       if (event.menuItemClickEvent.itemID === 1) open({ kind: 'channel' })
       else if (event.menuItemClickEvent.itemID === 2) open({ kind: 'chats' })
+      else if (event.menuItemClickEvent.itemID === 3) open({ kind: 'adverts' })
       return
     }
     if (types.includes(OsEventTypeList.DOUBLE_CLICK_EVENT)) {

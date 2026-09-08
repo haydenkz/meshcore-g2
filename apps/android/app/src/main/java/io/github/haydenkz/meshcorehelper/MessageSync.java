@@ -14,6 +14,7 @@ public final class MessageSync {
         void channel(int index, String name);
         void contact(String prefix, String name);
         default void contactInfo(ContactInfo info) { contact(info.prefix(), info.name()); }
+        default void advert(ContactInfo info) {}
         default void outgoing(long id, String state, Long ack, long timeoutMs) {}
         default void confirmed(long ack) {}
         default void packets(Long sent, Long received) {}
@@ -104,6 +105,7 @@ public final class MessageSync {
         // Discovery pushes are independent of the outstanding command. Initial
         // GET_CONTACTS rows populate names but are not newly received adverts.
         if (code == 0x80 || code == 0x8a) {
+            if (contact != null) listener.advert(contact);
             return;
         }
         if (!waiting) return;

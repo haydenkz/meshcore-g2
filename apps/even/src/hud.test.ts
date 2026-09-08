@@ -67,7 +67,7 @@ test('the initial HUD opens Channels with branding, packet counters, and all thr
   assert.match(text, /TX — · RX —/)
   assert.deepEqual(
     page?.menuObject?.menuItems?.map((item) => item.itemName),
-    ['Channels', 'Direct messages'],
+    ['Channels', 'Direct messages', 'Recent adverts'],
   )
   assert.equal(page?.imageObject?.[0]?.containerName, 'logo')
   assert.deepEqual(validateEvenHubPageContainer(page!), { valid: true })
@@ -527,6 +527,65 @@ test('late history responses cannot replace a newer screen and forgetting clears
   current = undefined
   await hud.refreshInbox()
   assert.doesNotMatch(contentOf(bridge, 9), /Private/)
+  hud.dispose()
+})
+
+test('recent adverts paginate independently and retain the viewed node when new adverts arrive', async () => {
+  const { bridge, emit } = host()
+  const advert = (id: number) => ({
+    id,
+    name: `Repeater ${id}`,
+    publicKeyPrefix: '112233445566',
+    nodeType: 'Repeater',
+    receivedAt: 1700000000000 + id * 1000,
+  })
+  let latest = [advert(3), advert(2)]
+  const cursors: (number | undefined)[] = []
+  const inbox = {
+    async readMessages() {
+      return { items: [received(1)], hasMore: false }
+    },
+    async readChats() {
+      return { items: [], hasMore: false }
+    },
+    async readAdverts(before?: number) {
+      cursors.push(before)
+      return {
+        items: before ? [advert(1)] : latest,
+        hasMore: before === undefined,
+      }
+    },
+  }
+  const hud = await startHud(
+    bridge,
+    { mode: 'live', connection: 'connected' },
+    (e) => assert.fail(String(e)),
+    () => {},
+    { inbox: () => inbox },
+  )
+  await hud.refreshInbox()
+  emit({ menuItemClickEvent: { itemID: 3 } })
+  await setImmediate()
+  assert.match(contentOf(bridge, 4), /^Recent adverts/)
+  assert.equal(contentOf(bridge, 7), 'Node: Repeater 3')
+  assert.match(contentOf(bridge, 8), /^Repeater · \d{2}:\d{2}$/)
+  assert.equal(contentOf(bridge, 9), 'ID 112233445566')
+  emit({ textEvent: { eventType: OsEventTypeList.SCROLL_BOTTOM_EVENT } })
+  await setImmediate()
+  latest = [advert(4), ...latest]
+  await hud.refreshInbox()
+  assert.equal(contentOf(bridge, 7), 'Node: Repeater 2')
+  emit({ textEvent: { eventType: OsEventTypeList.SCROLL_BOTTOM_EVENT } })
+  emit({ sysEvent: {} })
+  await setImmediate()
+  assert.equal(cursors.at(-1), 2)
+  assert.equal(contentOf(bridge, 7), 'Newer adverts')
+  emit({ textEvent: { eventType: OsEventTypeList.SCROLL_BOTTOM_EVENT } })
+  await setImmediate()
+  assert.equal(contentOf(bridge, 7), 'Node: Repeater 1')
+  emit({ menuItemClickEvent: { itemID: 1 } })
+  await setImmediate()
+  assert.equal(contentOf(bridge, 9), 'Message 1')
   hud.dispose()
 })
 

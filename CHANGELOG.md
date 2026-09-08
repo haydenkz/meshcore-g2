@@ -49,6 +49,8 @@ All notable changes to this project will be documented here, following
 
 ### Fixed
 
+- Load saved companion adverts when connecting, keep all known nodes without an
+  age or count cutoff, and sort both apps by advert time instead of insertion order.
 - Keep the Android header fixed when the keyboard opens, with keyboard spacing
   applied to the chat and search content.
 - Snap Android chats to the newest message after sending, once the shared
@@ -71,6 +73,9 @@ All notable changes to this project will be documented here, following
 - Add Android Channels and DMs with saved chat history, message composition, and
   send status. Share incoming and outgoing messages with the glasses; direct
   messages show delivery confirmation when the radio receives an acknowledgement.
+- Add Recent adverts to the glasses menu and Android Logs, showing each node's
+  latest advert, name, type, and timestamp. Save adverts across restarts and import
+  the companion's saved advert timestamps when connecting.
 - Add Home and Logs navigation to Android. Logs show the latest 200 received
   radio packets with type, route, signal strength, size, and 24-hour timestamps.
   The live log resets for each radio connection and excludes helper HTTP traffic.
