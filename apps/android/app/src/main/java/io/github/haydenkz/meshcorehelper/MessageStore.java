@@ -65,15 +65,37 @@ public final class MessageStore extends SQLiteOpenHelper implements StatusServer
     }
     public void contact(String radio, ContactInfo info) {
         if (radio == null) return;
-        if (!info.name().isBlank()) {
-            name(radio, "direct", info.prefix(), info.name());
-            ContentValues values = new ContentValues();
-            values.put("radio", radio); values.put("public_key", info.publicKey()); values.put("name", info.name()); values.put("type", info.type());
-            getWritableDatabase().insertWithOnConflict("nodes", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            // Key-only advert pushes must not erase metadata learned during sync.
+            db.execSQL("INSERT OR IGNORE INTO nodes(radio,public_key,name,type) VALUES (?,?,?,?)",
+                    new Object[]{radio, info.publicKey(), info.name(), info.type()});
+            if (!info.name().isBlank()) {
+                name(radio, "direct", info.prefix(), info.name());
+                db.execSQL("UPDATE nodes SET name=? WHERE radio=? AND public_key=?", new Object[]{info.name(), radio, info.publicKey()});
+            }
+            if (info.type() != 0) db.execSQL("UPDATE nodes SET type=? WHERE radio=? AND public_key=?", new Object[]{info.type(), radio, info.publicKey()});
+            if (info.type() == 1) ensureName(radio, "direct", info.prefix());
+            // GET_CONTACTS includes the last advert's timestamp, even when it was
+            // heard before the phone connected. A missing timestamp is not "now".
+            if (info.lastAdvertAt() > 0) saveAdvert(radio, info.publicKey(), info.lastAdvertAt());
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
+    }
+    public record SavedContact(String radio, String publicKey, String name, int type, long detectedAt) {}
+    /** Include legacy key-only adverts and contacts with no advert timestamp. */
+    public List<SavedContact> contacts() {
+        String query = "SELECT k.radio,k.public_key,COALESCE(n.name,''),COALESCE(n.type,0),COALESCE(a.received_at,0) "
+                + "FROM (SELECT radio,public_key FROM nodes UNION SELECT radio,public_key FROM adverts) k "
+                + "LEFT JOIN nodes n ON n.radio=k.radio AND n.public_key=k.public_key "
+                + "LEFT JOIN adverts a ON a.radio=k.radio AND a.public_key=k.public_key "
+                + "ORDER BY COALESCE(a.received_at,0) DESC,n.name COLLATE NOCASE,k.radio,k.public_key";
+        List<SavedContact> contacts = new ArrayList<>();
+        try (Cursor rows = getReadableDatabase().rawQuery(query, null)) {
+            while (rows.moveToNext()) contacts.add(new SavedContact(rows.getString(0), rows.getString(1), rows.getString(2), rows.getInt(3), rows.getLong(4)));
         }
-        // GET_CONTACTS includes the last advert's timestamp, even when it was
-        // heard before the phone connected. A missing timestamp is not "now".
-        if (info.lastAdvertAt() > 0) saveAdvert(radio, info.publicKey(), info.lastAdvertAt());
+        return contacts;
     }
     public void advert(String radio, ContactInfo info, long receivedAt) {
         if (radio == null) return;

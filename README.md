@@ -34,7 +34,8 @@ companion BLE firmware.
 2. Install the Android APK. Install the Even plugin through your Even beta
    invitation or [developer project](https://github.com/haydenkz/meshcore-g2/blob/main/CONTRIBUTING.md#test-on-hardware).
    Upload the `.ehpk` file to Even portal and set it as the beta release.
-3. Open **MeshCore G2** on Android, grant its permissions, and tap **Find a radio**.
+3. Open **MeshCore G2** on Android, tap the **Profile** button in the header,
+   grant its permissions, and tap **Find a radio**.
    Once connected, tap **Copy connection key**. Paste it into **MeshCore G2** in
    the Even App and tap **Link phone helper**.
 
@@ -46,11 +47,22 @@ to go back. Recent adverts also appear in Android under **Logs → Recent advert
 TX/RX show the radio's sent and received packet totals; unavailable counts appear
 as dashes.
 
+Android opens to **Contacts**, listing users, repeaters, sensors, room servers, and
+unknown nodes shared by your radios. Each entry shows its name, type icon, full
+selectable public key, and last advert detection time when available. Search by
+name or key, or filter by node type. Saved contacts remain available offline.
+Radio connection, glasses linking, and notification settings are under the
+**Profile** button in the header.
+
 In the Android app, swipe left or right to change tabs, or swipe across a message
 history to move between chats. Drafts stay with each conversation. In **Logs**, tap
 a packet for its details; use filters and **Pause** to inspect incoming traffic.
+The newest **100 received packets** are saved privately on the phone across
+reconnects and app restarts, with the oldest removed automatically. Packet capture
+runs while connected; packets from before capture started cannot be fetched from
+the radio. Pausing the view keeps capture running.
 
-On **Home**, enable **Message notifications** to get channel and direct-message
+In **Profile**, enable **Message notifications** to get channel and direct-message
 alerts while the helper is running. Tap an alert to open its chat. Android notification
 settings let you control the two message categories separately. Alerts are quiet for
 the chat you are currently reading; repeated deliveries do not alert again.

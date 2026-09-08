@@ -1,6 +1,5 @@
 package io.github.haydenkz.meshcorehelper;
 
-import java.util.List;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -49,22 +48,6 @@ public class RadioLogsTest {
         }
     }
 
-    @Test public void retainsOnlyTheNewestPacketsAndPublishesStableSnapshots() {
-        RadioLogs logs = new RadioLogs();
-        List<RadioLog> first = logs.add(packet(1));
-        for (int id = 2; id <= 205; id++) logs.add(packet(id));
-        List<RadioLog> current = logs.snapshot();
-        assertEquals(200, current.size());
-        assertEquals(205, current.get(0).id());
-        assertEquals(6, current.get(199).id());
-        assertEquals(List.of(packet(1)), first);
-        assertThrows(UnsupportedOperationException.class, () -> current.add(packet(206)));
-        logs.clear();
-        assertTrue(logs.snapshot().isEmpty());
-        assertEquals(200, current.size());
-        assertEquals(List.of(packet(206)), logs.add(packet(206)));
-    }
-
     @Test public void decodesMultiBytePathsAndTransportCodesWithoutMistakingPayloadForPath() {
         RadioLog log = RadioLog.parse(1, 1, new byte[]{(byte) 0x88, 0, -90, 0x14, 0x34, 0x12, 0x78, 0x56, 0x42, 0x11, 0x22, 0x33, 0x44, 0x55});
         assertEquals(2, log.details().pathCount());
@@ -88,7 +71,4 @@ public class RadioLogsTest {
         }
     }
 
-    private static RadioLog packet(long id) {
-        return RadioLog.parse(id, id * 1000, new byte[]{(byte) 0x88, 10, -100, 0x11, 0, 1});
-    }
 }

@@ -28,7 +28,7 @@ data class HelperUiState(
     val scanning: Boolean = false,
     val devices: List<NearbyRadio> = emptyList(),
     val notice: String? = null,
-    val logs: List<RadioLog> = emptyList(),
+    val packetError: String? = null,
     val hudLinked: Boolean = false,
     val radioId: String? = null,
     val channelMessageLimit: Int = 0,
@@ -61,8 +61,8 @@ class HelperViewModel(application: Application) : AndroidViewModel(application) 
                     mutableState.update { it.copy(radio = radio, running = service.available, radioId = service.radioId(),
                         channelMessageLimit = service.messageLimit("channel"), directMessageLimit = service.messageLimit("direct")) }
                 } }
-                launch { service.radioLogs.asFlow().collect { logs ->
-                    mutableState.update { it.copy(logs = logs) }
+                launch { service.packetHistoryError.asFlow().collect { error ->
+                    mutableState.update { it.copy(packetError = error) }
                 } }
                 while (true) {
                     val lastRead = service.lastHudReadAt()

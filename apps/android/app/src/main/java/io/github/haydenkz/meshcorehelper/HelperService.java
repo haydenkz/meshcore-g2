@@ -7,8 +7,8 @@ import android.content.pm.ServiceInfo;
 import android.os.*;
 import java.io.IOException;
 import java.security.SecureRandom;
-import java.util.List;
-import java.util.Collections;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -30,8 +30,9 @@ public final class HelperService extends Service {
     private final Map<Long, PendingAck> pendingAcks = new LinkedHashMap<>();
     private Long packetsSent;
     private Long packetsReceived;
-    private final RadioLogs logs = new RadioLogs();
-    public final MutableLiveData<List<RadioLog>> radioLogs = new MutableLiveData<>(Collections.emptyList());
+    private PacketStore packets;
+    private final ExecutorService packetWriter = Executors.newSingleThreadExecutor();
+    public final MutableLiveData<String> packetHistoryError = new MutableLiveData<>(null);
     public String detail = "Starting phone helper…";
     public boolean available;
     public final MutableLiveData<HelperSnapshot> snapshot = new MutableLiveData<>(
@@ -54,6 +55,7 @@ public final class HelperService extends Service {
     @Override public void onCreate() {
         super.onCreate();
         messages = new MessageStore(this);
+        packets = new PacketStore(this);
         messages.interruptOutgoing();
         lastSentAt = messages.lastOutgoingAt();
         startHelper();
@@ -80,7 +82,15 @@ public final class HelperService extends Service {
                 PendingAck pending = pendingAcks.remove(ack);
                 if (pending != null) { handler.removeCallbacks(pending.expiry()); messages.delivery(pending.messageId(), "delivered"); }
             }
-            @Override public void radioLog(RadioLog entry) { radioLogs.setValue(logs.add(entry)); }
+            @Override public void radioLog(RadioLog entry) {
+                String source = radioId;
+                packetWriter.execute(() -> {
+                    try { packets.add(source, entry); packetHistoryError.postValue(null); }
+                    catch (android.database.sqlite.SQLiteException error) {
+                        packetHistoryError.postValue("Could not save packet history. Check free phone storage.");
+                    }
+                });
+            }
             @Override public void packets(Long sent, Long received) {
                 packetsSent = sent; packetsReceived = received;
                 HelperSnapshot current = snapshot.getValue();
@@ -112,7 +122,6 @@ public final class HelperService extends Service {
     @Override public IBinder onBind(Intent intent) { return binder; }
     public void connect(BluetoothDevice device) {
         if (!available) return;
-        logs.clear(); radioLogs.setValue(logs.snapshot());
         companion.connect(device);
     }
     public void disconnect() { companion.disconnect(); }
@@ -180,5 +189,11 @@ public final class HelperService extends Service {
         snapshot.setValue(new HelperSnapshot("disconnected", "Helper stopped. Scan to reconnect.", "", null, null));
         stopForeground(STOP_FOREGROUND_REMOVE);
     }
-    @Override public void onDestroy() { shutdown(); if (messages != null) messages.close(); super.onDestroy(); }
+    @Override public void onDestroy() {
+        shutdown();
+        packetWriter.execute(() -> { if (packets != null) packets.close(); });
+        packetWriter.shutdown();
+        if (messages != null) messages.close();
+        super.onDestroy();
+    }
 }

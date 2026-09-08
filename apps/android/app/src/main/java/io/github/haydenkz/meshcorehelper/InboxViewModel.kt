@@ -26,11 +26,15 @@ data class InboxUiState(
     val hasOlder: Boolean = false,
     val loading: Boolean = true,
     val error: String? = null,
+    val contacts: List<MessageStore.SavedContact> = emptyList(),
+    val packets: List<PacketStore.SavedPacket> = emptyList(),
+    val packetError: String? = null,
 )
 
 /** Reads the same SQLite queries used by the glasses, including while the BLE service is stopped. */
 class InboxViewModel(application: Application) : AndroidViewModel(application) {
     private val store = MessageStore(application)
+    private val packetStore = PacketStore(application)
     private val mutableState = MutableStateFlow(InboxUiState())
     val state = mutableState.asStateFlow()
     private var visible = false
@@ -100,7 +104,16 @@ class InboxViewModel(application: Application) : AndroidViewModel(application) {
                     val messages = history?.getJSONArray("items")?.objects()?.map {
                         ChatMessage(it.getLong("id"), it.getString("senderName"), it.getString("text"), it.getLong("sentAt"), it.getString("direction") == "out", it.getString("delivery"))
                     } ?: emptyList()
-                    InboxUiState(channels, chats, adverts, conversation?.let { active -> (channels + chats).find { it.id == active.id && it.kind == active.kind } ?: active }, messages, history?.getBoolean("hasMore") ?: false, false)
+                    var packetError: String? = null
+                    val packets = try { synchronized(packetStore) { packetStore.all() } }
+                    catch (_: android.database.sqlite.SQLiteException) {
+                        packetError = "Could not read packet history. Check free phone storage."
+                        state.value.packets
+                    }
+                    InboxUiState(channels = channels, chats = chats, adverts = adverts,
+                        conversation = conversation?.let { active -> (channels + chats).find { it.id == active.id && it.kind == active.kind } ?: active },
+                        messages = messages, hasOlder = history?.getBoolean("hasMore") ?: false, loading = false,
+                        contacts = store.contacts(), packets = packets, packetError = packetError)
                 }
             }
             if (activeRevision == revision && visible) mutableState.value = next
@@ -117,6 +130,7 @@ class InboxViewModel(application: Application) : AndroidViewModel(application) {
     override fun onCleared() {
         onHidden()
         synchronized(store) { store.close() }
+        synchronized(packetStore) { packetStore.close() }
         super.onCleared()
     }
 }

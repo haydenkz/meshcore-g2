@@ -23,7 +23,13 @@ class InboxScreenTest {
     private val inbox = mutableStateOf(InboxUiState(channels = listOf(publicChannel, publicChannel.copy(id = "$radio:1", name = "Trail crew", preview = "Bob: Clear skies at the summit"),
         publicChannel.copy(id = "$radio:2", name = "Local", preview = "Anyone out riding today?")), chats = listOf(alice, alice.copy(id = "$radio:aabbccddeeff", name = "Bob", preview = "I have the spare battery")), adverts = listOf(
         RecentAdvert(1, "Hill repeater", "112233445566", "Repeater", 1788891960000),
-    ), loading = false))
+    ), loading = false, contacts = listOf(
+        MessageStore.SavedContact(radio, "112233445566" + "a1".repeat(26), "Alice", 1, 1788891960000),
+        MessageStore.SavedContact(radio, "223344556677" + "b2".repeat(26), "Hill repeater", 2, 1788891900000),
+        MessageStore.SavedContact(radio, "334455667788" + "c3".repeat(26), "Summit weather", 4, 1788891840000),
+        MessageStore.SavedContact(radio, "445566778899" + "d4".repeat(26), "Trail room", 3, 1788891780000),
+        MessageStore.SavedContact(radio, "556677889900" + "e5".repeat(26), "", 0, 0),
+    )))
     private val sends = mutableListOf<Pair<Conversation, String>>()
     private fun screen(sendError: String? = null) {
         compose.setContent {
@@ -129,20 +135,62 @@ class InboxScreenTest {
     }
     @Test fun packetDetailsFiltersAndPauseKeepInspectionStableAsPacketsArrive() {
         val packet = RadioLog.parse(1, 1788891960000, byteArrayOf(0x88.toByte(), 10, -100, 0x15, 2, 0xAB.toByte(), 0xCD.toByte(), 1, 2, 3))!!
-        compose.runOnIdle { helper.value = helper.value.copy(logs = listOf(packet)) }
+        compose.runOnIdle { inbox.value = inbox.value.copy(packets = listOf(PacketStore.SavedPacket(packet, radio))) }
         screen()
         compose.onNode(hasText("Logs") and hasClickAction()).performClick()
         compose.onNodeWithTag("packet-1").performClick()
         compose.onNodeWithText("Path: AB → CD").assertIsDisplayed()
         screenshot("logs")
         compose.onNodeWithText("Pause").performClick()
-        compose.runOnIdle { helper.value = helper.value.copy(logs = listOf(RadioLog.parse(2, 1788891960010, byteArrayOf(0x88.toByte(), 8, -80, 0x11, 0, 1))) + helper.value.logs) }
+        compose.runOnIdle { inbox.value = inbox.value.copy(packets = listOf(PacketStore.SavedPacket(RadioLog.parse(2, 1788891960010, byteArrayOf(0x88.toByte(), 8, -80, 0x11, 0, 1)), radio)) + inbox.value.packets) }
         compose.onNodeWithTag("packet-2").assertDoesNotExist()
         compose.onNodeWithText("Resume").performClick()
         compose.onNodeWithTag("packet-2").assertIsDisplayed()
         compose.onNodeWithText("Messages").performClick()
         compose.onNodeWithTag("packet-2").assertDoesNotExist()
         compose.onNodeWithTag("packet-1").assertIsDisplayed()
+    }
+    @Test fun contactsAreHomeAndProfileReturnsToTheSameSearch() {
+        screen()
+        compose.onNode(hasText("Contacts") and hasClickAction()).assertIsSelected()
+        compose.onNodeWithText("Hill repeater").assertIsDisplayed()
+        compose.onNodeWithText(inbox.value.contacts.first().publicKey()).assertIsDisplayed()
+        compose.onAllNodes(hasText("Last detected", substring = true)).onFirst().assertIsDisplayed()
+        screenshot("contacts")
+        compose.onNodeWithTag("contacts-search").performTextInput("223344556677")
+        compose.onNodeWithText("Hill repeater").assertIsDisplayed()
+        compose.onNodeWithText("Alice").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Profile").performClick()
+        compose.onNodeWithText("YOUR RADIO").assertIsDisplayed()
+        compose.onNodeWithText("Message notifications").assertIsDisplayed()
+        screenshot("profile")
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.onNodeWithTag("contacts-search").assertTextContains("223344556677")
+        compose.onNodeWithTag("contacts-search").performTextClearance()
+        compose.onNodeWithText("Sensors").performClick()
+        compose.onNodeWithText("Summit weather").assertIsDisplayed()
+        compose.onNodeWithText("Hill repeater").assertDoesNotExist()
+        compose.onNodeWithText("All").performClick()
+        compose.onNodeWithTag("contacts-list").performScrollToNode(hasText("Unnamed unknown node"))
+        compose.onNodeWithText("Detection time unavailable").assertIsDisplayed()
+    }
+    @Test fun offlineHistoryStaysReadableAndEmptyContactsLeadToRadioSetup() {
+        compose.runOnIdle {
+            helper.value = HelperUiState()
+            inbox.value = inbox.value.copy(contacts = emptyList(), packets = listOf(PacketStore.SavedPacket(
+                RadioLog.parse(42, 1788891960000, byteArrayOf(0x88.toByte(), 8, -80, 0x11, 0, 1)), radio)))
+        }
+        screen()
+        compose.onNodeWithText("Connect a radio").performClick()
+        compose.onNodeWithText("Find a radio").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.onNode(hasText("Logs") and hasClickAction()).performClick()
+        compose.onNodeWithText("History · 1 / 100 packets · saved on phone").assertIsDisplayed()
+        compose.onNodeWithTag("packet-42").performClick()
+        compose.onNodeWithText("Raw radio packet · hex").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Profile").performClick()
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.onNode(hasText("Logs") and hasClickAction()).assertIsSelected()
     }
     private fun screenshot(name: String) {
         compose.mainClock.advanceTimeBy(800)

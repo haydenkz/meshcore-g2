@@ -30,13 +30,13 @@ private val LogClock = DateTimeFormatter.ofPattern("HH:mm:ss.SSS", Locale.ROOT)
 internal fun LogsScreen(helper: HelperUiState, inbox: InboxUiState, modifier: Modifier = Modifier) {
     var adverts by rememberSaveable { mutableStateOf(false) }
     var filter by rememberSaveable { mutableStateOf("All") }
-    // Pause only freezes this view; the bounded live buffer continues receiving packets.
-    var frozen by remember { mutableStateOf<List<RadioLog>?>(null) }
-    val packets = frozen ?: helper.logs
+    // Pause only freezes this view; packet history continues saving new arrivals.
+    var frozen by remember { mutableStateOf<List<PacketStore.SavedPacket>?>(null) }
+    val packets = frozen ?: inbox.packets
     val visible = packets.filter { when (filter) {
-        "Messages" -> it.type() in listOf("Direct message", "Channel message", "Channel data")
-        "Adverts" -> it.type() == "Advertisement"
-        "Other" -> it.type() !in listOf("Direct message", "Channel message", "Channel data", "Advertisement")
+        "Messages" -> it.log().type() in listOf("Direct message", "Channel message", "Channel data")
+        "Adverts" -> it.log().type() == "Advertisement"
+        "Other" -> it.log().type() !in listOf("Direct message", "Channel message", "Channel data", "Advertisement")
         else -> true
     } }
     val packetList = rememberLazyListState()
@@ -44,14 +44,14 @@ internal fun LogsScreen(helper: HelperUiState, inbox: InboxUiState, modifier: Mo
     Column(modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("Radio logs", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-            if (!adverts) TextButton(onClick = { frozen = if (frozen == null) helper.logs.toList() else null }) { Text(if (frozen == null) "Pause" else "Resume") }
+            if (!adverts) TextButton(onClick = { frozen = if (frozen == null) inbox.packets.toList() else null }) { Text(if (frozen == null) "Pause" else "Resume") }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(selected = !adverts, onClick = { adverts = false }, label = { Text("Packets") })
             FilterChip(selected = adverts, onClick = { adverts = true }, label = { Text("Recent adverts") })
         }
         if (!adverts) {
-            Text("${if (frozen == null) "Live" else "Paused"} · ${packets.size} / ${RadioLogs.LIMIT} packets · current connection",
+            Text("${if (frozen != null) "Paused" else if (helper.radio.state() == "connected") "Live" else "History"} · ${packets.size} / ${PacketStore.LIMIT} packets · saved on phone",
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf("All", "Messages", "Adverts", "Other").forEach { name ->
@@ -66,8 +66,9 @@ internal fun LogsScreen(helper: HelperUiState, inbox: InboxUiState, modifier: Mo
                 if (inbox.adverts.isEmpty()) item { EmptyLog("No adverts received yet.") }
                 items(inbox.adverts, key = { "advert:${it.id}" }) { AdvertRow(it) }
             } else {
+                (helper.packetError ?: inbox.packetError)?.let { error -> item { Text(error, color = MaterialTheme.colorScheme.error) } }
                 if (visible.isEmpty()) item { EmptyLog(if (packets.isNotEmpty()) "No packets match this filter." else if (frozen != null) "Paused with no packets. Resume to see new arrivals." else if (helper.radio.state() == "connected") "Waiting for radio packets…" else "Connect a radio to see its logs.") }
-                items(visible, key = { "packet:${it.id()}" }) { RadioLogRow(it) }
+                items(visible, key = { "packet:${it.log().id()}" }) { RadioLogRow(it) }
             }
         }
     }
@@ -79,7 +80,8 @@ private fun EmptyLog(text: String) {
 }
 
 @Composable
-private fun RadioLogRow(log: RadioLog) {
+private fun RadioLogRow(packet: PacketStore.SavedPacket) {
+    val log = packet.log()
     var expanded by rememberSaveable(log.id()) { mutableStateOf(false) }
     val details = log.details()
     Card(onClick = { expanded = !expanded }, shape = RoundedCornerShape(12.dp),
@@ -101,6 +103,7 @@ private fun RadioLogRow(log: RadioLog) {
                 SelectionContainer {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Packet #${log.id()} · ${chatTime(log.receivedAt(), includeDate = true)}", style = MaterialTheme.typography.bodySmall)
+                        if (packet.radio().isNotEmpty()) Text("Companion: ${packet.radio().take(12)}", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
                         Text("Header 0x${String.format(Locale.ROOT, "%02X", details.header())} · payload v${details.version() + 1}", style = MaterialTheme.typography.bodySmall)
                         if (details.payloadBytes() >= 0) Text("Payload ${details.payloadBytes()} B · path hashes ${details.hashBytes()} B each", style = MaterialTheme.typography.bodySmall)
                         if (details.pathCount() >= 0) Text("Path: ${details.path().ifBlank { "Empty" }}", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
