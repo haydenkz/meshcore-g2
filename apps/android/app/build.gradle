@@ -61,7 +61,7 @@ tasks.named('preBuild') { dependsOn 'copyBranding' }
 tasks.register('requireReleaseSigning') {
     doLast {
         if (!hasReleaseSigning) {
-            throw new GradleException('Release signing is required. Set the four MESHCORE signing variables described in CONTRIBUTING.md.')
+            throw new GradleException('Release signing is required. Configure MESHCORE_KEYSTORE_PATH, MESHCORE_KEYSTORE_PASSWORD, MESHCORE_KEY_ALIAS, and MESHCORE_KEY_PASSWORD, or use the debug variant for local development.')
         }
     }
 }
