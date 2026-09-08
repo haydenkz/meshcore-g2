@@ -55,7 +55,7 @@ function host(result = StartUpPageCreateResult.success) {
   }
 }
 
-test('the initial HUD opens Channels with branding, packet counters, and both menu entries', async () => {
+test('the initial HUD opens Channels with branding, packet counters, and all three menu entries', async () => {
   const { bridge } = host()
   await startHud(bridge, await mockMeshCoreSource.readSnapshot(), (error) =>
     assert.fail(String(error)),
@@ -527,5 +527,37 @@ test('late history responses cannot replace a newer screen and forgetting clears
   current = undefined
   await hud.refreshInbox()
   assert.doesNotMatch(contentOf(bridge, 9), /Private/)
+  hud.dispose()
+})
+
+test('an open sent message refreshes its delivery status without leaving the reading view', async () => {
+  const { bridge, emit } = host()
+  let delivery = 'awaiting_ack'
+  const inbox = {
+    async readMessages() {
+      return {
+        items: [{ ...received(4), direction: 'out' as const, delivery }],
+        hasMore: false,
+      }
+    },
+    async readChats() {
+      return { items: [], hasMore: false }
+    },
+  }
+  const hud = await startHud(
+    bridge,
+    { mode: 'live', connection: 'connected' },
+    (e) => assert.fail(String(e)),
+    () => {},
+    { inbox: () => inbox },
+  )
+  await hud.refreshInbox()
+  assert.match(contentOf(bridge, 8), /^You · \d{2}:\d{2} · Sent$/)
+  emit({ sysEvent: {} })
+  await setImmediate()
+  delivery = 'delivered'
+  await hud.refreshInbox()
+  assert.match(contentOf(bridge, 8), /Delivered$/)
+  assert.match(contentOf(bridge, 4), /Read 1\/1/)
   hud.dispose()
 })

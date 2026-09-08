@@ -30,6 +30,9 @@ data class HelperUiState(
     val notice: String? = null,
     val logs: List<RadioLog> = emptyList(),
     val hudLinked: Boolean = false,
+    val radioId: String? = null,
+    val channelMessageLimit: Int = 0,
+    val directMessageLimit: Int = 0,
 )
 
 /** Owns discovery and service binding across Compose recomposition and rotation. */
@@ -55,7 +58,8 @@ class HelperViewModel(application: Application) : AndroidViewModel(application) 
             observation?.cancel()
             observation = viewModelScope.launch {
                 launch { service.snapshot.asFlow().collect { radio ->
-                    mutableState.update { it.copy(radio = radio, running = service.available) }
+                    mutableState.update { it.copy(radio = radio, running = service.available, radioId = service.radioId(),
+                        channelMessageLimit = service.messageLimit("channel"), directMessageLimit = service.messageLimit("direct")) }
                 } }
                 launch { service.radioLogs.asFlow().collect { logs ->
                     mutableState.update { it.copy(logs = logs) }
@@ -170,6 +174,15 @@ class HelperViewModel(application: Application) : AndroidViewModel(application) 
         helper?.connect(device)
     }
     fun disconnect() { stopScan(); helper?.disconnect() }
+    fun sendMessage(kind: String, conversation: String, text: String): String? {
+        return try {
+            val service = helper ?: return "Connect a radio to send messages."
+            service.sendMessage(kind, conversation, text)
+            null
+        } catch (error: IllegalArgumentException) { error.message ?: "Check your message and try again." }
+        catch (error: IllegalStateException) { error.message ?: "The radio could not send this message." }
+        catch (error: android.database.sqlite.SQLiteException) { "Could not save your message. Check free phone storage." }
+    }
     private fun releaseBinding() {
         scanOnBind = false
         observation?.cancel()

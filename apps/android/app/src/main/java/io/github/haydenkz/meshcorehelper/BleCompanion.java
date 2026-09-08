@@ -17,6 +17,9 @@ public final class BleCompanion {
         default void message(ReceivedMessage message) {}
         default void channel(int index, String name) {}
         default void contact(String prefix, String name) {}
+        default void contactInfo(ContactInfo info) { contact(info.prefix(), info.name()); }
+        default void outgoing(long id, String state, Long ack, long timeoutMs) {}
+        default void confirmed(long ack) {}
         default void packets(Long sent, Long received) {}
         default void radioLog(RadioLog entry) {}
     }
@@ -164,6 +167,9 @@ public final class BleCompanion {
                                 @Override public void message(ReceivedMessage message) { listener.message(message); }
                                 @Override public void channel(int index, String name) { listener.channel(index, name); }
                                 @Override public void contact(String prefix, String name) { listener.contact(prefix, name); }
+                                @Override public void contactInfo(ContactInfo info) { listener.contactInfo(info); }
+                                @Override public void outgoing(long id, String state, Long ack, long timeoutMs) { listener.outgoing(id, state, ack, timeoutMs); }
+                                @Override public void confirmed(long ack) { listener.confirmed(ack); }
                                 @Override public void packets(Long sent, Long received) { listener.packets(sent, received); }
                                 @Override public void idle() {
                                     disarmTimeout();
@@ -233,6 +239,10 @@ public final class BleCompanion {
     private void state(String state, String detail) { listener.update(state, detail, name, null, null); }
     private void fail(String detail) { closeConnection(); state("error", detail); }
     public void disconnect() { closeConnection(); state("disconnected", "Companion disconnected."); }
+    public int messageLimit(String kind) { return OutgoingMessage.byteLimit(kind, name, negotiatedMtu); }
+    public boolean sendMessage(OutgoingMessage message) {
+        return messageSync != null && messageSync.enqueue(message, message.encode(messageLimit(message.kind())));
+    }
     private void closeConnection() {
         disarmTimeout();
         pairing = false;

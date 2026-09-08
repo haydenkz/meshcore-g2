@@ -12,16 +12,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.haydenkz.meshcorehelper.R
@@ -33,6 +36,8 @@ import java.util.Locale
 import io.github.haydenkz.meshcorehelper.HelperSnapshot
 import io.github.haydenkz.meshcorehelper.HelperUiState
 import io.github.haydenkz.meshcorehelper.NearbyRadio
+import io.github.haydenkz.meshcorehelper.InboxUiState
+import io.github.haydenkz.meshcorehelper.Conversation
 
 private val ForestColors = darkColorScheme(
     primary = Color(0xFFB0DEB5), onPrimary = Color(0xFF12351E),
@@ -71,31 +76,46 @@ fun HelperScreen(
     onDisconnect: () -> Unit,
     onCopyKey: () -> Unit,
     onDismissNotice: () -> Unit,
+    inbox: InboxUiState = InboxUiState(),
+    onOpenConversation: (Conversation) -> Unit = {},
+    onCloseConversation: () -> Unit = {},
+    onOlderMessages: () -> Unit = {},
+    onSendMessage: (Conversation, String) -> String? = { _, _ -> "Connect a radio to send messages." },
 ) {
     val connected = state.radio.state() == "connected"
     val connecting = state.radio.state() in listOf("pairing", "connecting", "discovering", "subscribing", "initializing")
     var destination by rememberSaveable { mutableStateOf("Home") }
     val homeList = rememberLazyListState()
     val logsList = rememberLazyListState()
-    BackHandler(enabled = destination == "Logs") { destination = "Home" }
+    val chatStates = rememberSaveableStateHolder()
+    val conversation = inbox.conversation?.takeIf { destination == if (it.kind == "channel") "Channels" else "DMs" }
+    BackHandler(enabled = conversation != null || destination != "Home") {
+        if (conversation != null) onCloseConversation() else destination = "Home"
+    }
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             Row(
-                Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 16.dp),
+                Modifier.fillMaxWidth().testTag("helper-header").statusBarsPadding().padding(horizontal = 20.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Image(painterResource(R.drawable.meshcore_g2), contentDescription = "MeshCore G2 logo", modifier = Modifier.size(52.dp).clip(RoundedCornerShape(18.dp)))
-                Text("MeshCore G2", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                if (conversation != null) {
+                    TextButton(onClick = onCloseConversation) { Text("Back") }
+                    Text(conversation.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                } else {
+                    Image(painterResource(R.drawable.meshcore_g2), contentDescription = "MeshCore G2 logo", modifier = Modifier.size(52.dp).clip(RoundedCornerShape(18.dp)))
+                    Text("MeshCore G2", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                }
             }
         },
         bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
-                listOf("Home" to R.drawable.ic_home, "Logs" to R.drawable.ic_logs).forEach { (name, icon) ->
+            if (conversation == null) NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
+                listOf("Home" to R.drawable.ic_home, "Channels" to R.drawable.ic_channels, "DMs" to R.drawable.ic_messages, "Logs" to R.drawable.ic_logs).forEach { (name, icon) ->
                     NavigationBarItem(
                         selected = destination == name,
-                        onClick = { destination = name },
+                        onClick = { onCloseConversation(); destination = name },
                         icon = { Icon(painterResource(icon), contentDescription = null) },
                         label = { Text(name) },
                     )
@@ -103,6 +123,17 @@ fun HelperScreen(
             }
         },
     ) { insets ->
+        val content = Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets)
+        if (conversation != null) {
+            chatStates.SaveableStateProvider("${conversation.kind}:${conversation.id}") {
+                ConversationScreen(conversation, inbox, state, onOlderMessages, onSendMessage, content.imePadding())
+            }
+            return@Scaffold
+        }
+        if (destination == "Channels" || destination == "DMs") {
+            ConversationsScreen(if (destination == "Channels") "channel" else "direct", inbox, onOpenConversation, content.imePadding())
+            return@Scaffold
+        }
         if (destination == "Logs") {
             LazyColumn(
                 state = logsList,
