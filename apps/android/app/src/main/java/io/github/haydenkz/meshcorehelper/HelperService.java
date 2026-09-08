@@ -7,6 +7,8 @@ import android.content.pm.ServiceInfo;
 import android.os.*;
 import java.io.IOException;
 import java.security.SecureRandom;
+import java.util.List;
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -22,6 +24,8 @@ public final class HelperService extends Service {
     private String radioId;
     private Long packetsSent;
     private Long packetsReceived;
+    private final RadioLogs logs = new RadioLogs();
+    public final MutableLiveData<List<RadioLog>> radioLogs = new MutableLiveData<>(Collections.emptyList());
     public String detail = "Starting phone helper…";
     public boolean available;
     public final MutableLiveData<HelperSnapshot> snapshot = new MutableLiveData<>(
@@ -56,6 +60,7 @@ public final class HelperService extends Service {
             @Override public void message(ReceivedMessage message) { messages.add(radioId, message); }
             @Override public void channel(int index, String name) { messages.name(radioId, "channel", Integer.toString(index), name); }
             @Override public void contact(String prefix, String name) { messages.name(radioId, "direct", prefix, name); }
+            @Override public void radioLog(RadioLog entry) { radioLogs.setValue(logs.add(entry)); }
             @Override public void packets(Long sent, Long received) {
                 packetsSent = sent; packetsReceived = received;
                 HelperSnapshot current = snapshot.getValue();
@@ -85,7 +90,11 @@ public final class HelperService extends Service {
         return START_NOT_STICKY;
     }
     @Override public IBinder onBind(Intent intent) { return binder; }
-    public void connect(BluetoothDevice device) { if (available) companion.connect(device); }
+    public void connect(BluetoothDevice device) {
+        if (!available) return;
+        logs.clear(); radioLogs.setValue(logs.snapshot());
+        companion.connect(device);
+    }
     public void disconnect() { companion.disconnect(); }
     public long lastHudReadAt() { return server == null ? 0 : server.lastHudReadAt(); }
     private void update(String state, String message, String name, Integer version, Integer battery) {

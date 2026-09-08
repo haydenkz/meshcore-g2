@@ -62,6 +62,10 @@ All notable changes to this project will be documented here, following
 
 ### Added
 
+- Add Home and Logs navigation to Android. Logs show the latest 200 received
+  radio packets with type, route, signal strength, size, and 24-hour timestamps.
+  The live log resets for each radio connection and excludes helper HTTP traffic.
+
 - Minimal Even G2 HUD with a labelled demo/disconnected state and double-tap exit.
 - Separate MeshCore data-source interface and mock for hardware-free development.
 - Strict TypeScript, Vite, pinned Node LTS, npm lockfile, and development checks.

@@ -1,14 +1,17 @@
 package io.github.haydenkz.meshcorehelper.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,6 +25,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.haydenkz.meshcorehelper.R
+import io.github.haydenkz.meshcorehelper.RadioLog
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import io.github.haydenkz.meshcorehelper.HelperSnapshot
 import io.github.haydenkz.meshcorehelper.HelperUiState
 import io.github.haydenkz.meshcorehelper.NearbyRadio
@@ -67,6 +75,10 @@ fun HelperScreen(
 ) {
     val connected = state.radio.state() == "connected"
     val connecting = state.radio.state() in listOf("pairing", "connecting", "discovering", "subscribing", "initializing")
+    var destination by rememberSaveable { mutableStateOf("Home") }
+    val homeList = rememberLazyListState()
+    val logsList = rememberLazyListState()
+    BackHandler(enabled = destination == "Logs") { destination = "Home" }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -79,8 +91,39 @@ fun HelperScreen(
                 Text("MeshCore G2", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
             }
         },
+        bottomBar = {
+            NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
+                listOf("Home" to R.drawable.ic_home, "Logs" to R.drawable.ic_logs).forEach { (name, icon) ->
+                    NavigationBarItem(
+                        selected = destination == name,
+                        onClick = { destination = name },
+                        icon = { Icon(painterResource(icon), contentDescription = null) },
+                        label = { Text(name) },
+                    )
+                }
+            }
+        },
     ) { insets ->
+        if (destination == "Logs") {
+            LazyColumn(
+                state = logsList,
+                modifier = Modifier.fillMaxSize().padding(insets),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item {
+                    Text("Radio logs", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Medium)
+                    Text("Live packets received by your radio.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (state.logs.isEmpty()) item {
+                    Text(if (connected) "Waiting for radio packets…" else "Connect a radio to see its logs.", Modifier.padding(vertical = 24.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                items(state.logs, key = { it.id() }) { RadioLogRow(it) }
+            }
+            return@Scaffold
+        }
         LazyColumn(
+            state = homeList,
             modifier = Modifier.fillMaxSize().padding(insets),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
@@ -179,5 +222,21 @@ private fun Metric(label: String, value: String) {
 private fun ConnectedPreview() {
     MeshCoreTheme {
         HelperScreen(HelperUiState(radio = HelperSnapshot("connected", "BLE companion connected.", "Trail companion", 8, 3840), running = true, hudLinked = true), {}, {}, {}, {}, {}, {}, {})
+    }
+}
+
+private val LogTime = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.ROOT)
+
+@Composable
+private fun RadioLogRow(log: RadioLog) {
+    OutlinedCard(shape = RoundedCornerShape(20.dp)) {
+        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("RX · ${log.type()}", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                Text(LogTime.format(Instant.ofEpochMilli(log.receivedAt()).atZone(ZoneId.systemDefault())), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text("${log.route()} · ${log.bytes()} bytes", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("RSSI ${log.rssi()} dBm · SNR ${log.snr()} dB", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
