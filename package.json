@@ -1,8 +1,8 @@
 {
   "name": "meshcore-g2",
   "private": true,
-  "version": "0.1.0",
-  "description": "A demo MeshCore HUD for Even Realities G2 glasses",
+  "version": "0.1.2",
+  "description": "MeshCore G2 HUD for Even Realities G2 glasses",
   "type": "module",
   "engines": {
     "node": "24.x"
@@ -15,7 +15,7 @@
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test src/hud.test.ts",
+    "test": "node --test src/hud.test.ts src/meshcore/*.test.ts",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview",

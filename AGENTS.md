@@ -1,11 +1,10 @@
 # Working in meshcore-g2
 
-Read the README and relevant `docs/` before changing behavior. This milestone is
-a demo scaffold; real MeshCore connectivity belongs in a later PR.
+Read the README and relevant `docs/` before changing behavior. The Android helper owns
+radio BLE; the Even app reads authenticated status from the same phone.
 
 - Use feature branches and focused commits. Open PRs against `main`; do not push
   implementation directly to `main`, merge, or enable auto-merge unless requested.
-  The initialization branch is `chore/initialize-even-meshcore`.
 - Preserve unrelated work. Keep the app small: strict TypeScript, Vite, npm, and
   the official Even SDK. Keep radio data access in `src/meshcore/` and rendering in
   `src/hud.ts`.
@@ -37,3 +36,6 @@ a demo scaffold; real MeshCore connectivity belongs in a later PR.
 CI has read-only contents permission. Delivery is an Actions artifact, with no
 store publication or deployment credentials. Keep generated builds and packages
 out of Git.
+
+For Android changes, also run `./gradlew testDebugUnitTest lintDebug assembleDebug`
+from `android-helper/`. Do not commit local SDK settings, credentials, or APKs.

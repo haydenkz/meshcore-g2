@@ -5,6 +5,30 @@ All notable changes to this project will be documented here, following
 
 ## [Unreleased]
 
+### Changed
+
+- Rename the app to MeshCore G2 across the phone and glasses UI, package, and
+  Android helper instructions. The Android companion is named MeshCore G2 Helper.
+- Remember the phone helper link in Even host storage after one setup, with
+  reconnect and forget actions.
+- Replace the Android helper's platform widgets with Jetpack Compose and Material 3. Add lifecycle-aware state, nearby-radio cards, separate radio/plugin status,
+  and expandable connection diagnostics.
+
+### Fixed
+
+- Bind the status client's browser fetch to the window. Calling it with the
+  source object caused Chromium's “Illegal invocation” before any request,
+  even when the health check succeeded. Connection checks now verify the saved
+  key and status response as well as helper availability.
+- Disable compression for the helper's small local responses. NanoHTTPD compressed
+  empty CORS preflights, corrupting reused browser connections with invalid HTTP
+  responses. Helper 0.2.1 includes a regression test using the same socket.
+- Accept MeshCore ESP32 BLE MTUs of 172/176 for the initial identity and battery
+  handshake; report actual negotiation failures without blaming radio firmware.
+- Add phone-side connection checks and helper request diagnostics to investigate
+  failures reaching localhost from the Even App. The initial connection has now
+  been confirmed on Android hardware.
+
 ### Added
 
 - Minimal Even G2 HUD with a labelled demo/disconnected state and double-tap exit.
