@@ -4,15 +4,20 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
 export default defineConfig(
-  globalIgnores(['dist/**', 'android-helper/**']),
+  globalIgnores(['dist/**', 'apps/android/**']),
   js.configs.recommended,
   tseslint.configs.recommended,
   {
-    files: ['src/**/*.ts'],
+    files: ['apps/even/src/**/*.ts'],
     languageOptions: { globals: globals.browser },
   },
   {
-    files: ['*.js', 'scripts/**/*.mjs', 'vite.config.ts', 'src/**/*.test.ts'],
+    files: [
+      '*.js',
+      'scripts/**/*.mjs',
+      'apps/even/vite.config.ts',
+      'apps/even/src/**/*.test.ts',
+    ],
     languageOptions: { globals: globals.node },
   },
 )
