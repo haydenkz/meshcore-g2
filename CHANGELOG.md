@@ -9,9 +9,15 @@ All notable changes to this project will be documented here, following
 
 - Use a shared pixelated green MeshCore icon for the Android launcher and Even
   phone page, with matching monochrome artwork for the Even portal.
+
+- Organize both applications under `apps/`, with one installation README and one
+  contributor guide. Replace obsolete demo/research docs and screenshots.
+- Coordinate both app versions, collect matching installers with checksums and
+  build metadata, and separate Android development installs from signed releases.
+- Check both applications in CI and provide one preview download. Add a manual
+  signed draft-release workflow and grouped dependency updates.
 - Simplify the Even phone page with radio and battery cards matching the Android
   helper, a compact linked state, and collapsed connection details.
-
 - Rename the app to MeshCore G2 across the phone and glasses UI, package, and
   Android helper instructions. The Android companion is named MeshCore G2 Helper.
 - Remember the phone helper link in Even host storage after one setup, with

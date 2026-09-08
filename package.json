@@ -1,7 +1,7 @@
 {
   "name": "meshcore-g2",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.2.2",
   "description": "MeshCore G2 HUD for Even Realities G2 glasses",
   "type": "module",
   "engines": {
@@ -9,18 +9,23 @@
   },
   "packageManager": "npm@11.17.0",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --config apps/even/vite.config.ts",
     "simulate": "evenhub-simulator http://localhost:5173",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint . --max-warnings 0",
+    "qr": "evenhub qr",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test src/hud.test.ts src/meshcore/*.test.ts",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
-    "build": "npm run typecheck && vite build",
-    "preview": "vite preview",
-    "pack": "npm run build && evenhub pack app.json dist -o meshcore-hud.ehpk --sdk-ver 0.0.15",
-    "qr": "evenhub qr"
+    "lint": "eslint . --max-warnings 0",
+    "versions:check": "node scripts/artifacts.mjs check",
+    "typecheck": "tsc --noEmit --project apps/even/tsconfig.json",
+    "test": "node --test apps/even/src/hud.test.ts apps/even/src/meshcore/*.test.ts scripts/*.test.mjs",
+    "check": "npm run check:even && npm run check:android",
+    "check:even": "npm run versions:check && npm run format:check && npm run lint && npm run typecheck && npm test && npm run build:even",
+    "check:android": "node scripts/android.mjs check",
+    "build:even": "npm run typecheck && vite build --config apps/even/vite.config.ts",
+    "build:android": "node scripts/android.mjs build",
+    "pack:even": "npm run build:even && node scripts/artifacts.mjs even",
+    "pack": "npm run pack:even && npm run build:android && node scripts/artifacts.mjs android debug && node scripts/artifacts.mjs bundle debug",
+    "preview": "vite preview --config apps/even/vite.config.ts"
   },
   "dependencies": {
     "@evenrealities/even_hub_sdk": "0.0.15"
@@ -36,5 +41,8 @@
     "typescript": "5.9.3",
     "typescript-eslint": "8.70.0",
     "vite": "8.2.2"
+  },
+  "config": {
+    "androidVersionCode": 5
   }
 }

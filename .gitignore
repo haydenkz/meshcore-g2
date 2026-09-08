@@ -6,9 +6,10 @@ dist/
 *.local
 *.log
 .DS_Store
-android-helper/.gradle/
-android-helper/**/build/
-android-helper/local.properties
+apps/android/.gradle/
+apps/android/.kotlin/
+apps/android/**/build/
+apps/android/local.properties
 **/.idea/
 *.iml
 *.apk

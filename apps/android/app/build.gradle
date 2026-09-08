@@ -4,6 +4,11 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.compose'
 }
 
+def product = new groovy.json.JsonSlurper().parse(rootProject.file('../../package.json'))
+def releaseSigning = ['MESHCORE_KEYSTORE_PATH', 'MESHCORE_KEYSTORE_PASSWORD',
+        'MESHCORE_KEY_ALIAS', 'MESHCORE_KEY_PASSWORD'].collectEntries { [(it): System.getenv(it)] }
+def hasReleaseSigning = releaseSigning.values().every { it != null && !it.isBlank() }
+
 android {
     namespace 'io.github.haydenkz.meshcorehelper'
     compileSdk 35
@@ -11,9 +16,29 @@ android {
         applicationId 'io.github.haydenkz.meshcorehelper'
         minSdk 26
         targetSdk 35
-        versionCode 4
-        versionName '0.2.1'
+        versionCode product.config.androidVersionCode as int
+        versionName product.version
         resValue 'string', 'app_name', 'MeshCore G2 Helper'
+    }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(releaseSigning.MESHCORE_KEYSTORE_PATH)
+                storePassword releaseSigning.MESHCORE_KEYSTORE_PASSWORD
+                keyAlias releaseSigning.MESHCORE_KEY_ALIAS
+                keyPassword releaseSigning.MESHCORE_KEY_PASSWORD
+            }
+        }
+    }
+    buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-dev'
+            resValue 'string', 'app_name', 'MeshCore G2 Helper (Dev)'
+        }
+        release {
+            if (hasReleaseSigning) signingConfig signingConfigs.release
+        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -27,11 +52,22 @@ android {
 
 // Both apps consume the same checked-in artwork; generated resources stay in build/.
 tasks.register('copyBranding', Copy) {
-    from(rootProject.file('../assets/meshcore-g2.png'))
+    from(rootProject.file('../../assets/meshcore-g2.png'))
     into(layout.buildDirectory.dir('generated/res/branding/drawable-nodpi'))
     rename { 'meshcore_g2.png' }
 }
 tasks.named('preBuild') { dependsOn 'copyBranding' }
+
+tasks.register('requireReleaseSigning') {
+    doLast {
+        if (!hasReleaseSigning) {
+            throw new GradleException('Release signing is required. Set the four MESHCORE signing variables described in CONTRIBUTING.md.')
+        }
+    }
+}
+tasks.configureEach {
+    if (name == 'preReleaseBuild') dependsOn 'requireReleaseSigning'
+}
 
 dependencies {
     implementation platform('androidx.compose:compose-bom:2025.06.01')
