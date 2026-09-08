@@ -8,6 +8,7 @@ import {
 } from './meshcore/phone-helper.ts'
 import type { MeshCoreSnapshot } from './meshcore/source.ts'
 import { version } from '../package.json'
+import appIconUrl from '../assets/meshcore-g2.png'
 import './style.css'
 
 const status = document.querySelector<HTMLParagraphElement>('#status')!
@@ -30,6 +31,9 @@ let pendingSave = false
 let disposed = false
 let blockedPolicy = ''
 let helperReached = false
+
+document.querySelector<HTMLImageElement>('#app-icon')!.src = appIconUrl
+document.querySelector<HTMLLinkElement>('#app-favicon')!.href = appIconUrl
 
 document.querySelector('#app-version')!.textContent = `MeshCore G2 · ${version}`
 

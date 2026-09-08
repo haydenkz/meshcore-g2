@@ -1,6 +1,6 @@
 # Third-party notices
 
-This scaffold adapts the Even Realities minimal Even Hub starter. The following
+The Even app adapts the Even Realities minimal Even Hub starter. The following
 license applies to the upstream template portions.
 
 ```text
@@ -26,3 +26,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+The MeshCore G2 icon is a generated pixel-art adaptation of the
+[MeshCore app logo](https://play-lh.googleusercontent.com/7oguUQWSITt0-s4nkEHVNtlj3nPylr6svq4ksZ_HRTxM3Hcwhoib1WmHEhi4zxNowB-ZqoC1DREv2uwDQX6X).
+MeshCore and Even Realities names and marks belong to their respective owners.
