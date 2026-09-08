@@ -1,5 +1,6 @@
 package io.github.haydenkz.meshcorehelper.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -8,9 +9,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -19,6 +21,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import io.github.haydenkz.meshcorehelper.R
 import io.github.haydenkz.meshcorehelper.HelperSnapshot
 import io.github.haydenkz.meshcorehelper.HelperUiState
 import io.github.haydenkz.meshcorehelper.NearbyRadio
@@ -59,31 +62,29 @@ fun HelperScreen(
     onConnect: (NearbyRadio) -> Unit,
     onDisconnect: () -> Unit,
     onCopyKey: () -> Unit,
-    onCopyDiagnostics: () -> Unit,
-    onOpenHealth: () -> Unit,
     onStopHelper: () -> Unit,
     onDismissNotice: () -> Unit,
 ) {
     val connected = state.radio.state() == "connected"
     val connecting = state.radio.state() in listOf("pairing", "connecting", "discovering", "subscribing", "initializing")
-    var showDetails by rememberSaveable { mutableStateOf(false) }
-    Scaffold(containerColor = MaterialTheme.colorScheme.background) { insets ->
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            Row(
+                Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Image(painterResource(R.drawable.meshcore_g2), contentDescription = "MeshCore G2 logo", modifier = Modifier.size(52.dp).clip(RoundedCornerShape(18.dp)))
+                Text("MeshCore G2", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+            }
+        },
+    ) { insets ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(insets),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            item {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Box(Modifier.size(52.dp).background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
-                        RadioMark(Modifier.size(34.dp))
-                    }
-                    Column {
-                        Text("MeshCore G2", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-                        Text("PHONE COMPANION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                    }
-                }
-            }
             if (state.notice != null) item {
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -102,12 +103,11 @@ fun HelperScreen(
                             }
                         }
                         Text(state.radio.name().ifBlank { "Find your companion" }, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Medium)
-                        Text(state.radio.detail(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (!connected) Text(state.radio.detail(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (connecting) LinearProgressIndicator(Modifier.fillMaxWidth())
                         if (connected) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
                                 Metric("Battery · at connection", state.radio.batteryMillivolts()?.let { "${it / 1000.0} V" } ?: "—")
-                                Metric("Protocol", state.radio.protocolVersion()?.toString() ?: "—")
                             }
                         }
                         if (connected || connecting) {
@@ -120,7 +120,7 @@ fun HelperScreen(
                     }
                 }
             }
-            if (!connected && !connecting || state.devices.isNotEmpty()) {
+            if (!connected && !connecting) {
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text("Nearby radios", style = MaterialTheme.typography.titleMedium)
@@ -148,7 +148,6 @@ fun HelperScreen(
                 Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
                     Column(Modifier.fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("Even glasses", style = MaterialTheme.typography.titleLarge)
-                        Text(if (state.hudLinked) "MeshCore G2 is reading this helper." else "Link once. Open and reconnect next time.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(if (state.hudLinked) "●  Plugin linked" else "○  Waiting for the Even plugin", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                         if (!state.hudLinked) {
                             Text("Open MeshCore G2 in the Even App. Paste the connection key there once to remember this phone helper.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -158,29 +157,9 @@ fun HelperScreen(
                 }
             }
             item {
-                OutlinedCard(shape = RoundedCornerShape(20.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text("Connection details", style = MaterialTheme.typography.titleSmall)
-                                Text(if (state.running) "Helper running on this phone" else "Helper is stopped", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            TextButton(onClick = { showDetails = !showDetails }) { Text(if (showDetails) "Hide" else "Show") }
-                        }
-                        if (showDetails) {
-                            HorizontalDivider()
-                            Text(state.diagnostics, style = MaterialTheme.typography.bodySmall)
-                            Text("The local health page and the Even plugin are separate checks. A browser response does not confirm the plugin is linked.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            OutlinedButton(onClick = onCopyDiagnostics, modifier = Modifier.fillMaxWidth()) { Text("Copy diagnostics") }
-                            TextButton(onClick = onOpenHealth, enabled = state.running) { Text("Open health check") }
-                        }
-                    }
-                }
-            }
-            item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Keep the helper running while using your glasses. The ongoing notification keeps the radio connection active.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    TextButton(onClick = onStopHelper, enabled = state.running) { Text("Stop helper") }
+                    Text("Your radio stays connected in the background.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    TextButton(onClick = onStopHelper, enabled = state.running) { Text("Stop MeshCore G2") }
                 }
             }
         }
@@ -199,6 +178,6 @@ private fun Metric(label: String, value: String) {
 @Composable
 private fun ConnectedPreview() {
     MeshCoreTheme {
-        HelperScreen(HelperUiState(radio = HelperSnapshot("connected", "BLE companion connected.", "Trail companion", 8, 3840), running = true, hudLinked = true), {}, {}, {}, {}, {}, {}, {}, {}, {})
+        HelperScreen(HelperUiState(radio = HelperSnapshot("connected", "BLE companion connected.", "Trail companion", 8, 3840), running = true, hudLinked = true), {}, {}, {}, {}, {}, {}, {})
     }
 }

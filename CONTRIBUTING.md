@@ -74,7 +74,7 @@ pairing and the complete glasses connection. See the
 2. Connect it to your computer by USB and accept the debugging prompt. Select
    the phone in Android Studio and click **Run**. You can also
    [pair over Wi-Fi](https://developer.android.com/studio/run/device).
-3. Open **MeshCore G2 Helper (Dev)**, grant its permissions, and tap **Find a radio**.
+3. Open **MeshCore G2**, grant its permissions, and tap **Find a radio**.
    Disconnect other MeshCore apps from the radio first. Android 11 and earlier
    also need Location permission and Location enabled for scanning.
 4. Once connected, tap **Copy connection key**. Paste it into **MeshCore G2** in

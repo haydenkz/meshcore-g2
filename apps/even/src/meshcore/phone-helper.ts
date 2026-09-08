@@ -80,7 +80,7 @@ function packetCount(value: unknown): number | undefined {
 export class HelperAuthenticationError extends Error {
   constructor() {
     super(
-      'Connection key not accepted. Copy the current key from MeshCore G2 Helper and paste it below.',
+      'Connection key not accepted. Copy the current key from MeshCore G2 for Android and paste it below.',
     )
     this.name = 'HelperAuthenticationError'
   }
@@ -131,7 +131,7 @@ export class PhoneHelperSource implements MeshCoreSource, InboxSource {
     })
     if (response.status === 401) throw new HelperAuthenticationError()
     if (response.status === 404)
-      throw new Error('Update MeshCore G2 Helper to read messages.')
+      throw new Error('Update MeshCore G2 for Android to read messages.')
     if (!response.ok)
       throw new Error(`Phone helper unavailable (${response.status}).`)
     return response.json()
