@@ -53,7 +53,7 @@ Local QR testing stops when the phone backgrounds the app; use
 ## Android helper
 
 1. Install [Android Studio](https://developer.android.com/studio). In **SDK Manager**,
-   install Android SDK Platform **35**, Build-Tools **35.0.0**, and Platform-Tools.
+   install Android SDK Platform **37.0**, Build-Tools **36.0.0**, and Platform-Tools.
 2. Open `apps/android` as the project. Set **Gradle JDK** to **JDK 17** in Android
    Studio's Gradle settings, then sync the project.
 3. Select the **app** run configuration and the **debug** build variant.

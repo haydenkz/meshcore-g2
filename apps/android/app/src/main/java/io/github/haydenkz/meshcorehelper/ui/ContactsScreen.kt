@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
@@ -80,7 +81,7 @@ internal fun ContactsScreen(helper: HelperUiState, inbox: InboxUiState, onProfil
                                 Icon(painterResource(contactIcon(contact.type())), contactType(contact.type()), Modifier.padding(10.dp).size(24.dp), tint = MaterialTheme.colorScheme.primary)
                             }
                             Column(Modifier.weight(1f)) {
-                                Text(contact.name().ifBlank { "Unnamed ${contactType(contact.type()).lowercase(Locale.getDefault())}" }, style = MaterialTheme.typography.titleSmall)
+                                Text(contact.name().ifBlank { "Unnamed ${contactType(contact.type()).lowercase(LocalLocale.current.platformLocale)}" }, style = MaterialTheme.typography.titleSmall)
                                 Text(contactType(contact.type()), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
